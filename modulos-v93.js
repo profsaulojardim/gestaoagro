@@ -1,4 +1,4 @@
-/* V98 — módulos operacionais + Calculadora da Pecuária com fórmula atualizada. */
+/* V99 — módulos operacionais + Calculadora da Pecuária com peso médio somente em arrobas. */
 (()=>{
   const css=document.createElement('style');
   css.textContent=`
@@ -68,18 +68,16 @@
 
     // Fórmula atualizada: primeiro considera 50% do peso bruto e desconta W kg por arroba.
     // Y = PB/2 - PB*(1/2)*(W/15), em kg.
-    // Quando W = 1, corresponde exatamente a: PB/2 - PB*(1/2)*(1/15).
     const Ykg=(PB/2)-(PB*(1/2)*(W/15));
     const T=(V*Q)/15;
     const L=(Ykg/15)-T;
     const pesoLiquidoKg=L*15;
     const valorTotal=L*P;
-    const pesoMedioKg=pesoLiquidoKg/Q;
     const pesoMedioArroba=L/Q;
     rL.textContent=`${fmt(L,2)} @`;
     sL.textContent=`${fmt(pesoLiquidoKg,2)} kg líquidos`;
-    rM.textContent=`${fmt(pesoMedioKg,2)} kg`;
-    sM.textContent=`${fmt(pesoMedioArroba,2)} @ por animal`;
+    rM.textContent=`${fmt(pesoMedioArroba,2)} @`;
+    sM.textContent='';
     rT.textContent=dinheiro(valorTotal);
   };
 
