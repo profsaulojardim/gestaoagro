@@ -1,4 +1,4 @@
-/* V97 — módulos operacionais + Calculadora da Pecuária com conversão dimensional correta. */
+/* V98 — módulos operacionais + Calculadora da Pecuária com fórmula atualizada. */
 (()=>{
   const css=document.createElement('style');
   css.textContent=`
@@ -40,34 +40,18 @@
 
   const painelOriginal=window.telaPainel;
   if(typeof painelOriginal==='function'){
-    window.telaPainel=async function(){
-      const r=await painelOriginal.apply(this,arguments);
-      adicionarModulosPainel();
-      return r;
-    };
+    window.telaPainel=async function(){const r=await painelOriginal.apply(this,arguments);adicionarModulosPainel();return r;};
   }
 
   window.telaCalculadoraPecuaria=function(){
-    topoPagina();
-    if(typeof marcarNav==='function')marcarNav('painel');
-    $t.dataset.syncScreen='calculadora-pecuaria';
-    $t.innerHTML=`
-      <button class="voltar" onclick="telaPainel()">‹ Gestão Operacional</button>
-      <div class="sechead"><span class="sic">🧮</span><h2>Calculadora da Pecuária</h2></div>
-      <div class="meta" style="font-size:14px;margin:0 4px 18px">Escolha o cálculo que deseja realizar.</div>
-      <div class="calc-func-card" onclick="telaCalculadoraNegociacao()">
-        <div class="cfc-ico">💰</div><div class="cfc-t">Valor financeiro de uma negociação</div>
-        <div class="cfc-d">Calcule peso líquido, valor total da operação e peso médio por animal.</div><div class="cfc-seta">›</div>
-      </div>`;
+    topoPagina();if(typeof marcarNav==='function')marcarNav('painel');$t.dataset.syncScreen='calculadora-pecuaria';
+    $t.innerHTML=`<button class="voltar" onclick="telaPainel()">‹ Gestão Operacional</button><div class="sechead"><span class="sic">🧮</span><h2>Calculadora da Pecuária</h2></div><div class="meta" style="font-size:14px;margin:0 4px 18px">Escolha o cálculo que deseja realizar.</div><div class="calc-func-card" onclick="telaCalculadoraNegociacao()"><div class="cfc-ico">💰</div><div class="cfc-t">Valor financeiro de uma negociação</div><div class="cfc-d">Calcule peso líquido, valor total da operação e peso médio por animal.</div><div class="cfc-seta">›</div></div>`;
   };
 
   function numeroCalc(id){
-    const el=document.getElementById(id); if(!el)return null;
-    let s=(el.value||'').trim().replace(/\s/g,''); if(!s)return null;
-    if(s.includes(',')&&s.includes('.'))s=s.replace(/\./g,'').replace(',','.');
-    else if(s.includes(','))s=s.replace(',','.');
-    else if(/^\d{1,3}(\.\d{3})+$/.test(s))s=s.replace(/\./g,'');
-    const n=Number(s); return Number.isFinite(n)?n:null;
+    const el=document.getElementById(id);if(!el)return null;let s=(el.value||'').trim().replace(/\s/g,'');if(!s)return null;
+    if(s.includes(',')&&s.includes('.'))s=s.replace(/\./g,'').replace(',','.');else if(s.includes(','))s=s.replace(',','.');else if(/^\d{1,3}(\.\d{3})+$/.test(s))s=s.replace(/\./g,'');
+    const n=Number(s);return Number.isFinite(n)?n:null;
   }
   const fmt=(n,d=2)=>new Intl.NumberFormat('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d}).format(n);
   const dinheiro=n=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(n);
@@ -80,15 +64,14 @@
     const Q=numeroCalc('calc_qtd_animais');
     const rL=document.getElementById('calc_res_liq'),rM=document.getElementById('calc_res_medio'),rT=document.getElementById('calc_res_total');
     const sL=document.getElementById('calc_res_liq_sub'),sM=document.getElementById('calc_res_medio_sub');
-    if([PB,W,V,P,Q].some(v=>v===null)||PB<0||W<0||V<0||P<0||Q<=0){
-      if(rL)rL.textContent='—'; if(rM)rM.textContent='—'; if(rT)rT.textContent='—'; if(sL)sL.textContent='Preencha todos os campos'; if(sM)sM.textContent=''; return;
-    }
-    // Y é obtido em kg. Para calcular L em arrobas, convertemos Y para @ antes de subtrair T.
-    // Ykg = PB(1 - W/30); T = (V*Q)/15; L = (Ykg/15) - T.
-    const Ykg=PB*(1-(W/30));
-    const Yarrouba=Ykg/15;
+    if([PB,W,V,P,Q].some(v=>v===null)||PB<0||W<0||V<0||P<0||Q<=0){if(rL)rL.textContent='—';if(rM)rM.textContent='—';if(rT)rT.textContent='—';if(sL)sL.textContent='Preencha todos os campos';if(sM)sM.textContent='';return;}
+
+    // Fórmula atualizada: primeiro considera 50% do peso bruto e desconta W kg por arroba.
+    // Y = PB/2 - PB*(1/2)*(W/15), em kg.
+    // Quando W = 1, corresponde exatamente a: PB/2 - PB*(1/2)*(1/15).
+    const Ykg=(PB/2)-(PB*(1/2)*(W/15));
     const T=(V*Q)/15;
-    const L=Yarrouba-T;
+    const L=(Ykg/15)-T;
     const pesoLiquidoKg=L*15;
     const valorTotal=L*P;
     const pesoMedioKg=pesoLiquidoKg/Q;
@@ -101,9 +84,7 @@
   };
 
   window.telaCalculadoraNegociacao=function(){
-    topoPagina();
-    if(typeof marcarNav==='function')marcarNav('painel');
-    $t.dataset.syncScreen='calculadora-negociacao';
+    topoPagina();if(typeof marcarNav==='function')marcarNav('painel');$t.dataset.syncScreen='calculadora-negociacao';
     $t.innerHTML=`
       <button class="voltar" onclick="telaCalculadoraPecuaria()">‹ Calculadora da Pecuária</button>
       <div class="sechead"><span class="sic">💰</span><h2>Valor da negociação</h2></div>
@@ -120,7 +101,7 @@
           <div class="calc-res"><div class="lbl">Peso médio / animal</div><div class="val" id="calc_res_medio">—</div><div class="sub" id="calc_res_medio_sub"></div></div>
           <div class="calc-res full"><div class="lbl">Valor financeiro total da operação</div><div class="val" id="calc_res_total">—</div></div>
         </div>
-        <div class="calc-formula"><b>Cálculo:</b> Y = PB × (1 − W/30) em kg · T = (V × Q)/15 em @ · L = (Y/15) − T em @ · Valor = L × preço/@</div>
+        <div class="calc-formula"><b>Cálculo:</b> Y = PB/2 − PB × 1/2 × W/15 em kg · T = (V × Q)/15 em @ · L = (Y/15) − T em @ · Valor = L × preço/@</div>
       </div>`;
   };
 })();
