@@ -1,9 +1,9 @@
 /* Service Worker do "Gestão do Rebanho"
-   V86: atualização previsível no iPhone sem cachear Supabase. */
+   V87: atualização previsível no iPhone sem cachear Supabase. */
 
-const CACHE = "rebanho-v86";
-const APP_VERSION = "86";
-const CORE = ["./manifest.json", "./icon.png", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png", "./boi.png", "./bezerro.png", "./troca-v81.js", "./troca-v81-core.js"];
+const CACHE = "rebanho-v87";
+const APP_VERSION = "87";
+const CORE = ["./manifest.json", "./icon.png", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png", "./boi.png", "./bezerro.png", "./troca-v81.js", "./troca-v81-core.js", "./perfil-backup-v87.js"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting()));
@@ -47,7 +47,8 @@ async function paginaAtual(request){
   if(!tipo.includes("text/html"))return res;
   let html=await res.text();
   html=html.replace(/<script\s+src=["']troca-v81\.js(?:\?[^"']*)?["']><\/script>/gi,'');
-  html=html.replace(/<\/body>/i,`${atualizadorInline()}<script src="troca-v81.js?v=${APP_VERSION}"></script></body>`);
+  html=html.replace(/<script\s+src=["']perfil-backup-v87\.js(?:\?[^"']*)?["']><\/script>/gi,'');
+  html=html.replace(/<\/body>/i,`${atualizadorInline()}<script src="troca-v81.js?v=${APP_VERSION}"></script><script src="perfil-backup-v87.js?v=${APP_VERSION}"></script></body>`);
   const headers=new Headers(res.headers);headers.delete("content-length");headers.delete("content-encoding");headers.set("cache-control","no-store");
   const out=new Response(html,{status:res.status,statusText:res.statusText,headers});
   const c=await caches.open(CACHE);await c.put("./index.html",out.clone());
