@@ -1,8 +1,8 @@
 /* Service Worker do "Gestão do Rebanho"
-   V94: página Venda/Morte com duas opções, sem cachear Supabase. */
+   V95: calculadora pecuária funcional, sem cachear Supabase. */
 
-const CACHE = "rebanho-v94";
-const APP_VERSION = "94";
+const CACHE = "rebanho-v95";
+const APP_VERSION = "95";
 const CORE = ["./manifest.json", "./icon.png", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png", "./boi.png", "./bezerro.png", "./troca-v81.js", "./troca-v81-core.js", "./perfil-backup-v87.js", "./perfil-cleanup-v90.js", "./ui-cleanup-v91.js", "./saida-v92.js", "./modulos-v93.js", "./saida-menu-v94.js"];
 
 self.addEventListener("install", e => {e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting()));});
