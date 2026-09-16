@@ -2,7 +2,7 @@
    Guarda os arquivos do app no aparelho para abrir mesmo sem internet.
    (Os DADOS do gado ficam no IndexedDB, separado deste cache.) */
 
-const CACHE = "rebanho-v82";
+const CACHE = "rebanho-v83";
 const CORE = ["./manifest.json", "./icon.png", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png", "./boi.png", "./bezerro.png", "./troca-v81.js", "./troca-v81-core.js", "./troca-v82-fix.js"];
 
 self.addEventListener("install", e => {
@@ -25,7 +25,7 @@ async function paginaV81(request){
   return out;
 }
 
-// V82: navegações usam a versão mais nova; Supabase e qualquer domínio externo
+// V83: navegações usam a versão mais nova; Supabase e qualquer domínio externo
 // passam direto para a rede e nunca entram no Cache Storage.
 self.addEventListener("fetch", e => {
   if(e.request.method!=="GET")return;
