@@ -1,8 +1,8 @@
 /* Service Worker do "Gestão do Rebanho"
-   V87: atualização previsível no iPhone sem cachear Supabase. */
+   V88: atualização previsível no iPhone sem cachear Supabase. */
 
-const CACHE = "rebanho-v87";
-const APP_VERSION = "87";
+const CACHE = "rebanho-v88";
+const APP_VERSION = "88";
 const CORE = ["./manifest.json", "./icon.png", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png", "./boi.png", "./bezerro.png", "./troca-v81.js", "./troca-v81-core.js", "./perfil-backup-v87.js"];
 
 self.addEventListener("install", e => {
@@ -58,7 +58,6 @@ async function paginaAtual(request){
 self.addEventListener("fetch", e => {
   if(e.request.method!=="GET")return;
   const url=new URL(e.request.url);
-  // Supabase e qualquer domínio externo nunca entram no cache.
   if(url.origin!==self.location.origin)return;
   if(e.request.mode==="navigate"){
     e.respondWith(paginaAtual(e.request).catch(async()=>await caches.match("./index.html")||Response.error()));
