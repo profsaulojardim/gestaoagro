@@ -1,8 +1,8 @@
 /* Service Worker do "Gestão do Rebanho"
-   V96: equações da calculadora conforme definição do usuário, sem cachear Supabase. */
+   V97: correção dimensional da calculadora, sem cachear Supabase. */
 
-const CACHE = "rebanho-v96";
-const APP_VERSION = "96";
+const CACHE = "rebanho-v97";
+const APP_VERSION = "97";
 const CORE = ["./manifest.json", "./icon.png", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png", "./boi.png", "./bezerro.png", "./troca-v81.js", "./troca-v81-core.js", "./perfil-backup-v87.js", "./perfil-cleanup-v90.js", "./ui-cleanup-v91.js", "./saida-v92.js", "./modulos-v93.js", "./saida-menu-v94.js"];
 
 self.addEventListener("install", e => {e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting()));});
