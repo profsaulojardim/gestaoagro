@@ -1,4 +1,4 @@
-/* V93 — novos módulos operacionais: Saída de animais e Calculadora da Pecuária. */
+/* V95 — módulos operacionais + Calculadora da Pecuária funcional. */
 (()=>{
   const css=document.createElement('style');
   css.textContent=`
@@ -15,7 +15,9 @@
     .calc-res.full{grid-column:1/-1}
     .calc-res .lbl{font-size:12px;color:var(--muted)}
     .calc-res .val{font-size:20px;font-weight:800;color:var(--verde-esc);margin-top:3px}
-    @media(max-width:390px){.calc-campos{grid-template-columns:1fr}.calc-campos .full{grid-column:auto}}
+    .calc-res .sub{font-size:11.5px;color:var(--muted);margin-top:3px}
+    .calc-formula{margin-top:14px;padding:12px 14px;border-radius:13px;background:var(--verde-lite);color:var(--muted);font-size:12px;line-height:1.55}
+    @media(max-width:390px){.calc-campos{grid-template-columns:1fr}.calc-campos .full{grid-column:auto}.calc-resultados{grid-template-columns:1fr}}
   `;
   document.head.appendChild(css);
 
@@ -27,7 +29,7 @@
     if(!grid||!grid.classList.contains('grid')||grid.querySelector('[data-mod-v93]'))return;
     const saida=document.createElement('div');
     saida.className='mod';saida.dataset.modV93='saida';
-    saida.setAttribute('onclick','formSaida()');
+    saida.setAttribute('onclick','telaVendaMorteAnimal()');
     saida.innerHTML='<div class="mic">↩️</div><div class="mt">Venda / Morte de Animal</div><div class="md">Venda individual, múltipla, por lote ou grupo e registro de morte.</div><span class="chev">›</span>';
     const calc=document.createElement('div');
     calc.className='mod';calc.dataset.modV93='calc';
@@ -59,6 +61,45 @@
       </div>`;
   };
 
+  function numeroCalc(id){
+    const el=document.getElementById(id); if(!el)return null;
+    let s=(el.value||'').trim().replace(/\s/g,''); if(!s)return null;
+    if(s.includes(',')&&s.includes('.'))s=s.replace(/\./g,'').replace(',','.');
+    else if(s.includes(','))s=s.replace(',','.');
+    else if(/^\d{1,3}(\.\d{3})+$/.test(s))s=s.replace(/\./g,'');
+    const n=Number(s); return Number.isFinite(n)?n:null;
+  }
+  const fmt=(n,d=2)=>new Intl.NumberFormat('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d}).format(n);
+  const dinheiro=n=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(n);
+
+  window.calcularNegociacaoPecuaria=function(){
+    const PB=numeroCalc('calc_peso_bruto');
+    const W=numeroCalc('calc_desc_arroba');
+    const V=numeroCalc('calc_tara');
+    const P=numeroCalc('calc_preco_arroba');
+    const Q=numeroCalc('calc_qtd_animais');
+    const rL=document.getElementById('calc_res_liq'),rM=document.getElementById('calc_res_medio'),rT=document.getElementById('calc_res_total');
+    const sL=document.getElementById('calc_res_liq_sub'),sM=document.getElementById('calc_res_medio_sub');
+    if([PB,W,V,P,Q].some(v=>v===null)||PB<0||W<0||V<0||P<0||Q<=0){
+      if(rL)rL.textContent='—'; if(rM)rM.textContent='—'; if(rT)rT.textContent='—'; if(sL)sL.textContent='Preencha todos os campos'; if(sM)sM.textContent=''; return;
+    }
+    // Equações informadas pelo usuário. Como L é expresso em arrobas e PB/Y são
+    // originados em kg, Y é convertido para @ antes da subtração de T.
+    const Ykg=PB*(1-(W/30));
+    const Y=Ykg/15;
+    const T=(V*Q)/15;
+    const L=Y-T;
+    const pesoLiquidoKg=L*15;
+    const valorTotal=L*P;
+    const pesoMedioKg=pesoLiquidoKg/Q;
+    const pesoMedioArroba=L/Q;
+    rL.textContent=`${fmt(L,2)} @`;
+    sL.textContent=`${fmt(pesoLiquidoKg,2)} kg líquidos`;
+    rM.textContent=`${fmt(pesoMedioKg,2)} kg`;
+    sM.textContent=`${fmt(pesoMedioArroba,2)} @ por animal`;
+    rT.textContent=dinheiro(valorTotal);
+  };
+
   window.telaCalculadoraNegociacao=function(){
     topoPagina();
     if(typeof marcarNav==='function')marcarNav('painel');
@@ -68,18 +109,18 @@
       <div class="sechead"><span class="sic">💰</span><h2>Valor da negociação</h2></div>
       <div class="card">
         <div class="calc-campos">
-          <div class="full"><label>Peso bruto (kg)</label><input id="calc_peso_bruto" inputmode="decimal" placeholder="Ex: 12.500"></div>
-          <div><label>Desconto por arroba</label><input id="calc_desc_arroba" inputmode="decimal" placeholder="Ex: 1"></div>
-          <div><label>Tara</label><input id="calc_tara" inputmode="decimal" placeholder="Informe a tara"></div>
-          <div><label>Preço da arroba (R$)</label><input id="calc_preco_arroba" inputmode="decimal" placeholder="Ex: 320"></div>
-          <div><label>Quantidade de animais</label><input id="calc_qtd_animais" type="number" min="1" inputmode="numeric" placeholder="Ex: 25"></div>
+          <div class="full"><label>Peso bruto (kg)</label><input id="calc_peso_bruto" inputmode="decimal" placeholder="Ex: 12.500" oninput="calcularNegociacaoPecuaria()"></div>
+          <div><label>Desconto por arroba (kg)</label><input id="calc_desc_arroba" inputmode="decimal" placeholder="Ex: 1" oninput="calcularNegociacaoPecuaria()"></div>
+          <div><label>Tara por animal (kg)</label><input id="calc_tara" inputmode="decimal" placeholder="Ex: 4" oninput="calcularNegociacaoPecuaria()"></div>
+          <div><label>Preço da arroba (R$)</label><input id="calc_preco_arroba" inputmode="decimal" placeholder="Ex: 320" oninput="calcularNegociacaoPecuaria()"></div>
+          <div><label>Quantidade de animais</label><input id="calc_qtd_animais" type="number" min="1" inputmode="numeric" placeholder="Ex: 25" oninput="calcularNegociacaoPecuaria()"></div>
         </div>
         <div class="calc-resultados">
-          <div class="calc-res"><div class="lbl">Peso líquido</div><div class="val" id="calc_res_liq">—</div></div>
-          <div class="calc-res"><div class="lbl">Peso médio / animal</div><div class="val" id="calc_res_medio">—</div></div>
+          <div class="calc-res"><div class="lbl">Peso líquido</div><div class="val" id="calc_res_liq">—</div><div class="sub" id="calc_res_liq_sub">Preencha todos os campos</div></div>
+          <div class="calc-res"><div class="lbl">Peso médio / animal</div><div class="val" id="calc_res_medio">—</div><div class="sub" id="calc_res_medio_sub"></div></div>
           <div class="calc-res full"><div class="lbl">Valor financeiro total da operação</div><div class="val" id="calc_res_total">—</div></div>
         </div>
-        <div class="meta" style="margin-top:14px">Estrutura preparada. As fórmulas serão configuradas na próxima etapa.</div>
+        <div class="calc-formula"><b>Cálculo:</b> Y = PB × (1 − W/30) · T = (V × Q)/15 · L = (Y/15) − T · Valor = L × preço/@</div>
       </div>`;
   };
 })();
