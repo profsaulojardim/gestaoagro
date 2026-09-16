@@ -1,4 +1,4 @@
-/* V99 — módulos operacionais + Calculadora da Pecuária com peso médio somente em arrobas. */
+/* V100 — módulos operacionais + Calculadora da Pecuária com peso médio principal em @ e secundário em kg. */
 (()=>{
   const css=document.createElement('style');
   css.textContent=`
@@ -74,10 +74,11 @@
     const pesoLiquidoKg=L*15;
     const valorTotal=L*P;
     const pesoMedioArroba=L/Q;
+    const pesoMedioKg=pesoLiquidoKg/Q;
     rL.textContent=`${fmt(L,2)} @`;
     sL.textContent=`${fmt(pesoLiquidoKg,2)} kg líquidos`;
     rM.textContent=`${fmt(pesoMedioArroba,2)} @`;
-    sM.textContent='';
+    sM.textContent=`${fmt(pesoMedioKg,2)} kg por animal`;
     rT.textContent=dinheiro(valorTotal);
   };
 
