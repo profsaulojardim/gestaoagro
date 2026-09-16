@@ -1,9 +1,9 @@
 /* Service Worker do "Gestão do Rebanho"
-   V93: novos módulos operacionais, sem cachear Supabase. */
+   V94: página Venda/Morte com duas opções, sem cachear Supabase. */
 
-const CACHE = "rebanho-v93";
-const APP_VERSION = "93";
-const CORE = ["./manifest.json", "./icon.png", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png", "./boi.png", "./bezerro.png", "./troca-v81.js", "./troca-v81-core.js", "./perfil-backup-v87.js", "./perfil-cleanup-v90.js", "./ui-cleanup-v91.js", "./saida-v92.js", "./modulos-v93.js"];
+const CACHE = "rebanho-v94";
+const APP_VERSION = "94";
+const CORE = ["./manifest.json", "./icon.png", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png", "./boi.png", "./bezerro.png", "./troca-v81.js", "./troca-v81-core.js", "./perfil-backup-v87.js", "./perfil-cleanup-v90.js", "./ui-cleanup-v91.js", "./saida-v92.js", "./modulos-v93.js", "./saida-menu-v94.js"];
 
 self.addEventListener("install", e => {e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting()));});
 self.addEventListener("activate", e => {e.waitUntil((async()=>{const ks=await caches.keys();await Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)));await self.clients.claim();const cs=await self.clients.matchAll({type:"window",includeUncontrolled:true});for(const c of cs){try{const u=new URL(c.url);if(u.origin===self.location.origin){u.searchParams.set("appv",APP_VERSION);await c.navigate(u.href);}}catch(_){}}})());});
@@ -12,9 +12,9 @@ function atualizadorInline(){return `<script>(function(){if(!('serviceWorker' in
 
 async function paginaAtual(request){
   const res=await fetch(request,{cache:"no-store"});if(!res.ok)return res;const tipo=res.headers.get("content-type")||"";if(!tipo.includes("text/html"))return res;let html=await res.text();
-  const scripts=["troca-v81.js","perfil-backup-v87.js","perfil-cleanup-v90.js","ui-cleanup-v91.js","saida-v92.js","modulos-v93.js"];
+  const scripts=["troca-v81.js","perfil-backup-v87.js","perfil-cleanup-v90.js","ui-cleanup-v91.js","saida-v92.js","modulos-v93.js","saida-menu-v94.js"];
   for(const arq of scripts){const re=new RegExp(`<script\\s+src=["']${arq.replace('.', '\\.')}(?:\\?[^"']*)?["']><\\/script>`,`gi`);html=html.replace(re,'');}
-  html=html.replace(/<\/body>/i,`${atualizadorInline()}<script src="troca-v81.js?v=${APP_VERSION}"></script><script src="perfil-backup-v87.js?v=${APP_VERSION}"></script><script src="perfil-cleanup-v90.js?v=${APP_VERSION}"></script><script src="ui-cleanup-v91.js?v=${APP_VERSION}"></script><script src="saida-v92.js?v=${APP_VERSION}"></script><script src="modulos-v93.js?v=${APP_VERSION}"></script></body>`);
+  html=html.replace(/<\/body>/i,`${atualizadorInline()}<script src="troca-v81.js?v=${APP_VERSION}"></script><script src="perfil-backup-v87.js?v=${APP_VERSION}"></script><script src="perfil-cleanup-v90.js?v=${APP_VERSION}"></script><script src="ui-cleanup-v91.js?v=${APP_VERSION}"></script><script src="saida-v92.js?v=${APP_VERSION}"></script><script src="modulos-v93.js?v=${APP_VERSION}"></script><script src="saida-menu-v94.js?v=${APP_VERSION}"></script></body>`);
   const headers=new Headers(res.headers);headers.delete("content-length");headers.delete("content-encoding");headers.set("cache-control","no-store");const out=new Response(html,{status:res.status,statusText:res.statusText,headers});const c=await caches.open(CACHE);await c.put("./index.html",out.clone());return out;
 }
 self.addEventListener("fetch", e => {if(e.request.method!=="GET")return;const url=new URL(e.request.url);if(url.origin!==self.location.origin)return;if(e.request.mode==="navigate"){e.respondWith(paginaAtual(e.request).catch(async()=>await caches.match("./index.html")||Response.error()));return;}if(url.searchParams.has("v")){e.respondWith(fetch(e.request,{cache:"no-store"}).then(res=>{if(res&&res.ok){const cp=res.clone();caches.open(CACHE).then(c=>c.put(e.request,cp));}return res;}).catch(()=>caches.match(e.request)));return;}e.respondWith(caches.match(e.request).then(hit=>hit||fetch(e.request).then(res=>{if(res&&res.ok){const cp=res.clone();caches.open(CACHE).then(c=>c.put(e.request,cp));}return res;})));});
