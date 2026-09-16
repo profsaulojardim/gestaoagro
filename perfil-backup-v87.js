@@ -1,4 +1,4 @@
-/* V88 — textos e hierarquia visual da área de segurança/backup do Perfil. */
+/* V89 — textos e hierarquia visual da área de segurança/backup do Perfil. */
 (()=>{
   const STYLE_ID='perfil-backup-v87-style';
   if(!document.getElementById(STYLE_ID)){
@@ -6,13 +6,28 @@
     st.id=STYLE_ID;
     st.textContent=`
       .backup-recuperar-v87{border-color:#B7791F !important;color:#8A5A00 !important;background:#FFFBF2 !important;}
-      .backup-nota-v88{width:100%;margin:10px 0 0;color:#8A5A00;font-size:12.5px;line-height:1.35;text-align:left;}
+      .backup-nota-v88{
+        width:100% !important;
+        max-width:none !important;
+        box-sizing:border-box !important;
+        grid-column:1 / -1 !important;
+        flex:0 0 100% !important;
+        align-self:stretch !important;
+        margin:10px 0 0 !important;
+        padding:10px 12px !important;
+        border:1px solid #F0D89B !important;
+        border-radius:12px !important;
+        background:#FFF8E8 !important;
+        color:#8A5A00 !important;
+        font-size:12.5px !important;
+        line-height:1.35 !important;
+        text-align:left !important;
+      }
     `;
     document.head.appendChild(st);
   }
 
   function aplicar(){
-    // Remove qualquer aviso grande deixado pela V87.
     document.querySelectorAll('.backup-aviso-v87').forEach(el=>el.remove());
 
     document.querySelectorAll('h1,h2,h3,.ti,.meta,.cloud-note,div,span').forEach(el=>{
@@ -42,15 +57,21 @@
       }
     });
 
-    // Uma única nota curta abaixo da linha dos dois botões.
     const recuperar=[...document.querySelectorAll('button')].find(btn=>(btn.textContent||'').includes('Recuperar cópia anterior'));
     if(recuperar){
       const linha=recuperar.parentElement;
-      if(linha && !linha.querySelector('.backup-nota-v88')){
-        const nota=document.createElement('div');
-        nota.className='backup-nota-v88';
-        nota.textContent='A recuperação substitui os dados locais deste aparelho.';
-        linha.appendChild(nota);
+      if(linha){
+        let nota=linha.querySelector('.backup-nota-v88');
+        if(!nota){
+          nota=document.createElement('div');
+          nota.className='backup-nota-v88';
+          nota.innerHTML='⚠️ <strong>A recuperação substitui os dados locais deste aparelho.</strong>';
+          linha.appendChild(nota);
+        }
+        // Garante largura total mesmo se o contêiner usar grid ou flex.
+        nota.style.gridColumn='1 / -1';
+        nota.style.width='100%';
+        nota.style.flexBasis='100%';
       }
     }
 
