@@ -1,4 +1,4 @@
-/* V96 — módulos operacionais + Calculadora da Pecuária com equações definidas pelo usuário. */
+/* V97 — módulos operacionais + Calculadora da Pecuária com conversão dimensional correta. */
 (()=>{
   const css=document.createElement('style');
   css.textContent=`
@@ -83,12 +83,12 @@
     if([PB,W,V,P,Q].some(v=>v===null)||PB<0||W<0||V<0||P<0||Q<=0){
       if(rL)rL.textContent='—'; if(rM)rM.textContent='—'; if(rT)rT.textContent='—'; if(sL)sL.textContent='Preencha todos os campos'; if(sM)sM.textContent=''; return;
     }
-    // Aplicação literal das equações definidas pelo usuário:
-    // Y = PB(1 - W/30); T = (V*Q)/15; L = Y - T.
-    // Y e L são tratados diretamente como arrobas, sem conversão adicional de Y.
-    const Y=PB*(1-(W/30));
+    // Y é obtido em kg. Para calcular L em arrobas, convertemos Y para @ antes de subtrair T.
+    // Ykg = PB(1 - W/30); T = (V*Q)/15; L = (Ykg/15) - T.
+    const Ykg=PB*(1-(W/30));
+    const Yarrouba=Ykg/15;
     const T=(V*Q)/15;
-    const L=Y-T;
+    const L=Yarrouba-T;
     const pesoLiquidoKg=L*15;
     const valorTotal=L*P;
     const pesoMedioKg=pesoLiquidoKg/Q;
@@ -120,7 +120,7 @@
           <div class="calc-res"><div class="lbl">Peso médio / animal</div><div class="val" id="calc_res_medio">—</div><div class="sub" id="calc_res_medio_sub"></div></div>
           <div class="calc-res full"><div class="lbl">Valor financeiro total da operação</div><div class="val" id="calc_res_total">—</div></div>
         </div>
-        <div class="calc-formula"><b>Cálculo:</b> Y = PB × (1 − W/30) · T = (V × Q)/15 · L = Y − T · Valor = L × preço/@</div>
+        <div class="calc-formula"><b>Cálculo:</b> Y = PB × (1 − W/30) em kg · T = (V × Q)/15 em @ · L = (Y/15) − T em @ · Valor = L × preço/@</div>
       </div>`;
   };
 })();
