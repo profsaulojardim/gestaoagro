@@ -1,8 +1,8 @@
 /* Service Worker do "Gestão do Rebanho"
-   V88: atualização previsível no iPhone sem cachear Supabase. */
+   V89: atualização previsível no iPhone sem cachear Supabase. */
 
-const CACHE = "rebanho-v88";
-const APP_VERSION = "88";
+const CACHE = "rebanho-v89";
+const APP_VERSION = "89";
 const CORE = ["./manifest.json", "./icon.png", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png", "./boi.png", "./bezerro.png", "./troca-v81.js", "./troca-v81-core.js", "./perfil-backup-v87.js"];
 
 self.addEventListener("install", e => {
