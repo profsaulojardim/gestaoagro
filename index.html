@@ -49,6 +49,10 @@
     position:sticky;top:0;z-index:20;
     border-bottom:1px solid var(--linha);
   }
+  /* Antes do login: só a tela de login aparece — topo e menu somem por completo. */
+  body.deslogado .topo,
+  body.deslogado nav{display:none!important;}
+  body.deslogado main#tela{padding-bottom:24px;}
   .topo .icobtn{
     width:44px;height:44px;border-radius:12px;background:none;color:var(--verde-esc);font-size:22px;
     display:flex;align-items:center;justify-content:center;padding:0;line-height:1;
@@ -274,7 +278,7 @@
   }
 </style>
 </head>
-<body>
+<body class="deslogado">
 
 <div class="topo">
   <button class="icobtn" onclick="menuConfig()">☰</button>
@@ -595,9 +599,10 @@ function irAba(a){aba=a;document.querySelectorAll("nav button").forEach(x=>x.cla
 async function render(){
   topoPagina();
   $t.dataset.syncScreen="";
-  if(aba==="perfil")return telaPerfil();
   const user=await authUser();
-  if(!user)return telaBloqueada();
+  if(!user){document.body.classList.add("deslogado");return telaBloqueada();}
+  document.body.classList.remove("deslogado");
+  if(aba==="perfil")return telaPerfil();
   if(aba==="financeiro")return menuFinanceiro();
   return ({inicio:telaInicio,painel:telaPainel,lotes:telaLotes,animais:telaAnimais}[aba]||telaInicio)();
 }
@@ -617,16 +622,17 @@ async function renderSeguro(){
 }
 async function telaBloqueada(){
   topoPagina();
-  $t.innerHTML=`<div style="padding-top:18px">
-    <div class="card" style="text-align:center;padding:26px 18px">
-      <div class="avatar" style="margin:0 auto 12px">🔐</div>
-      <div class="ti" style="font-size:21px;color:var(--verde-esc)">Entre para usar o app</div>
-      <div class="meta" style="margin:8px auto 16px;max-width:420px">
-        Sua conta identifica o responsável pelos dados e permite backup e futura sincronização.
-      </div>
-      <button class="btn" style="margin:0" onclick="formLoginCloud()">Entrar / criar conta</button>
-      <div class="cloud-note">Depois do primeiro login, o app pode continuar funcionando offline neste aparelho.</div>
+  document.body.classList.add("deslogado");
+  $t.innerHTML=`<div style="min-height:calc(100vh - 40px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px 18px">
+    <div style="width:96px;height:96px;border-radius:26px;background:var(--verde-lite);display:flex;align-items:center;justify-content:center;margin-bottom:18px;overflow:hidden">
+      <img src="boi.png" alt="" style="width:78px;height:78px;object-fit:contain">
     </div>
+    <div style="font-size:26px;font-weight:800;color:var(--verde-esc)">Gestão do Rebanho</div>
+    <div class="meta" style="margin:10px auto 26px;max-width:360px;line-height:1.5">
+      Entre com sua conta para acessar o rebanho. Seus dados ficam vinculados ao seu login e podem ser usados em mais de um aparelho.
+    </div>
+    <button class="btn" style="max-width:360px;margin:0 auto" onclick="formLoginCloud()">Entrar / criar conta</button>
+    <div class="cloud-note" style="margin-top:16px;max-width:360px">Depois do primeiro login, o app continua funcionando offline neste aparelho.</div>
   </div>`;
 }
 function voltar(){renderSeguro();}
@@ -637,7 +643,7 @@ function homeMoney(v){
 }
 async function telaInicio(){
   topoPagina();
-  const {propriedades,lotes,animais}=await tudo();
+  const {propriedades,lotes,animais,pastos}=await tudo();
   const ativos=animais.filter(a=>a.status==="Ativo");
   const ano=String(new Date().getFullYear());
   const lancs=(await getAll("lancamentos")).filter(l=>(l.data||"").slice(0,4)===ano);
@@ -648,11 +654,54 @@ async function telaInicio(){
   const aReceber=lancs.filter(l=>l.tipo==="receita"&&!l.pago).reduce((s,l)=>s+(l.valor||0),0);
   const aPagar=lancs.filter(l=>l.tipo==="despesa"&&!l.pago).reduce((s,l)=>s+(l.valor||0),0);
 
+  // Nome do usuário
+  const user=await authUser();
+  let perfilLocal=null; try{perfilLocal=await getRaw("perfil","perfil");}catch(_){}
+  const nomeCompleto=(user&&user.user_metadata&&user.user_metadata.full_name)
+    ||(perfilLocal&&perfilLocal.nome)
+    ||(user&&user.email?user.email.split("@")[0]:"produtor(a)");
+  const primeiroNome=String(nomeCompleto).trim().split(/\s+/)[0]||"produtor(a)";
+
+  // Avisos importantes
+  const hojeTs=dataParaTs(hoje());
+  const iconeAviso=(typeof ICONE_AVISO!=="undefined"&&ICONE_AVISO)||{};
+  // 1) desmamas que passaram do prazo (210 dias)
+  const desmAtras=animais.filter(a=>a.nascidoNaPropriedade===true&&!a.desmamado&&a.dataNascimento)
+    .map(a=>({a,d:DIAS_DESMAMA-diasEntre(dataParaTs(a.dataNascimento),Date.now())}))
+    .filter(x=>x.d<0).sort((x,y)=>x.d-y.d);
+  // 2) eventos futuros agendados (avisos ainda não concluídos, de hoje em diante)
+  const eventosFut=(await getAll("avisos")).filter(a=>!a.feito&&a.data&&dataParaTs(a.data)>=hojeTs)
+    .sort((x,y)=>(x.data||"").localeCompare(y.data||""));
+  // 3) pastos há mais de 3 meses no mesmo estado (ocupado ou reservado)
+  const pastos3m=(pastos||[]).filter(p=>(p.status==="Ocupado"||p.status==="Descanso")&&diasEntre(p.statusDesde||p.criadoEm,Date.now())>90)
+    .map(p=>({p,d:diasEntre(p.statusDesde||p.criadoEm,Date.now())})).sort((x,y)=>y.d-x.d);
+
+  const itensAviso=[];
+  desmAtras.forEach(x=>itensAviso.push(`<div class="card rt" onclick="verAnimal('${x.a.id}')" style="border-left:4px solid #c0392b">
+    <div class="ti" style="font-size:15px">🍼 Desmama atrasada — ${esc(rotulo(x.a))} ${codAnimal(x.a)}</div>
+    <div class="meta" style="color:#c0392b;font-weight:600">Passou ${-x.d} dia(s) do prazo de 210 dias</div></div>`));
+  eventosFut.forEach(a=>{const dd=Math.round((dataParaTs(a.data)-hojeTs)/86400000);
+    const quando=dd===0?"hoje":(dd===1?"amanhã":`em ${dd} dias`);
+    itensAviso.push(`<div class="card rt" onclick="telaAvisos()" style="border-left:4px solid #e0a800">
+      <div class="ti" style="font-size:15px">${iconeAviso[a.tipo]||"🔔"} ${esc(a.tipo||"Evento")} — ${quando}</div>
+      ${a.detalhe?`<div class="meta">${esc(a.detalhe)}</div>`:""}
+      <div class="meta">📅 ${fmt(a.data)}</div></div>`);});
+  pastos3m.forEach(x=>{const meses=Math.floor(x.d/30);
+    itensAviso.push(`<div class="card rt" onclick="verPasto('${x.p.id}')" style="border-left:4px solid #e0a800">
+      <div class="ti" style="font-size:15px">🌱 ${esc(x.p.nome)} — ${x.p.status==="Ocupado"?"ocupado":"reservado"} há ${x.d} dias</div>
+      <div class="meta">Mais de 3 meses no mesmo estado (${meses} ${meses===1?"mês":"meses"})</div></div>`);});
+
+  const blocoAvisos=itensAviso.length
+    ? `<div class="h3" style="margin-top:4px">🔔 Avisos importantes</div>${itensAviso.join("")}`
+    : `<div class="card" style="border-left:4px solid var(--verde)"><div class="ti" style="font-size:15px;color:var(--verde-esc)">✅ Tudo em dia</div><div class="meta" style="margin-top:4px">Sem desmamas atrasadas, eventos agendados ou pastos há mais de 3 meses no mesmo estado.</div></div>`;
+
   $t.innerHTML=`
     <div class="home-title">
-      <h2>Início</h2>
+      <h2>Olá, ${esc(primeiroNome)}. Seja bem-vindo(a).</h2>
       <div class="meta">Escolha uma área para continuar</div>
     </div>
+
+    ${blocoAvisos}
 
     <div class="home-module" onclick="abrirOperacional()">
       <div class="home-module-head">
