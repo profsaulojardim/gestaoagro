@@ -245,6 +245,9 @@
 
   /* ---------- Início / módulos principais ---------- */
   .home-title{margin:4px 4px 14px}
+  .home-greet{margin:6px 4px 16px}
+  .home-greet h2{margin:0;color:var(--verde-esc);font-size:25px;line-height:1.1;font-weight:800}
+  .home-greet .hg-sub{margin-top:4px;font-size:15px;color:var(--muted)}
   .home-title h2{margin:0;color:var(--verde-esc);font-size:27px;line-height:1.05}
   .home-title .meta{margin-top:5px;font-size:15px}
   .home-module{background:linear-gradient(145deg,#fbfefb,#f0f8f2);border:1px solid #e4eee7;border-radius:20px;
@@ -387,10 +390,10 @@ async function podeUsarApp(acao){
 }
 
 const DB="rebanho_v2";
-const DB_VERSION=9;
+const DB_VERSION=10;
 const SYNC_SCHEMA_VERSION=4;
-const DATA_STORES=["propriedades","marcas","lotes","animais","eventos","medicamentos","perfil","pastos","avisos","lancamentos","grupos","grupo_animais"];
-const SYNC_STORES=["propriedades","marcas","lotes","animais","eventos","medicamentos","pastos","avisos","lancamentos","grupos","grupo_animais"];
+const DATA_STORES=["propriedades","marcas","lotes","animais","eventos","medicamentos","perfil","pastos","avisos","lancamentos","grupos","grupo_animais","insumos","insumo_mov"];
+const SYNC_STORES=["propriedades","marcas","lotes","animais","eventos","medicamentos","pastos","avisos","lancamentos","grupos","grupo_animais","insumos","insumo_mov"];
 let _syncRunning=false,_syncTimer=null,_syncLastError="",_syncLastResult=null;
 let db;
 
@@ -543,6 +546,12 @@ const TIPOS_AVISO=["Comprar produto","Contratar serviço","Manejo","Outro"];
 const ICONE_AVISO={"Comprar produto":"🛒","Contratar serviço":"🧰","Manejo":"🐄","Outro":"🔔"};
 const CAT_RECEITA=["Venda de animais","Venda de bezerro","Venda de matriz/descarte","Leite","Arrendamento","Outros"];
 const CAT_DESPESA=["Sanidade (vacina/remédio)","Alimentação (sal/ração)","Pasto (semente/adubo/herbicida)","Mão de obra","Combustível","Manutenção (cerca/máquina)","Veterinário","Impostos/taxas","Frete","Outros"];
+// ---- Estoque de insumos ----
+const CAT_INSUMO_GADO=["Medicamento","Vacina","Sal mineral","Suplemento","Vitamina","Hormônio","Vermífugo","Outro"];
+const CAT_INSUMO_MANUT=["Cerca (arame/estaca)","Combustível","Óleo/lubrificante","Ferramenta/peça","Material de construção","Outro"];
+const UNID_INSUMO=["un","kg","g","L","mL","m","saco","dose","frasco","pacote"];
+// Categoria de despesa gerada no consumo, conforme o grupo do insumo
+const DESPESA_DE_INSUMO={gado:"Sanidade (vacina/remédio)",manutencao:"Manutenção (cerca/máquina)"};
 const MESES_ABREV=["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 const TIPOS_MED=["Vacina","Antibiótico","Vermífugo","Anti-inflamatório","Carrapaticida/Mosquicida","Vitamina/Mineral","Hormônio","Outro"];
 const optTipoMed=sel=>TIPOS_MED.map(t=>`<option value="${t}" ${t===sel?"selected":""}>${t}</option>`).join("");
@@ -650,9 +659,11 @@ async function telaInicio(){
   const receita=lancs.filter(l=>l.tipo==="receita").reduce((s,l)=>s+(l.valor||0),0);
   const cpv=lancs.filter(l=>l.tipo==="receita").reduce((s,l)=>s+(l.custo||0),0);
   const despesas=lancs.filter(l=>l.tipo==="despesa").reduce((s,l)=>s+(l.valor||0),0);
-  const resultado=receita-cpv-despesas;
+  const ganhoReal=lancs.filter(l=>l.tipo==="receita").reduce((s,l)=>s+(l.ganhoRealizado||0),0);
+  const resultado=receita-cpv-despesas+ganhoReal;
   const aReceber=lancs.filter(l=>l.tipo==="receita"&&!l.pago).reduce((s,l)=>s+(l.valor||0),0);
-  const aPagar=lancs.filter(l=>l.tipo==="despesa"&&!l.pago).reduce((s,l)=>s+(l.valor||0),0);
+  const aPagar=lancs.filter(l=>l.tipo==="despesa"&&!l.pago).reduce((s,l)=>s+(l.valor||0),0)
+    +(await getAll("insumo_mov")).filter(m=>m.tipo==="entrada"&&!m.pago).reduce((s,m)=>s+(m.valorTotal||0),0);
 
   // Nome do usuário
   const user=await authUser();
@@ -696,9 +707,9 @@ async function telaInicio(){
     : `<div class="card" style="border-left:4px solid var(--verde)"><div class="ti" style="font-size:15px;color:var(--verde-esc)">✅ Tudo em dia</div><div class="meta" style="margin-top:4px">Sem desmamas atrasadas, eventos agendados ou pastos há mais de 3 meses no mesmo estado.</div></div>`;
 
   $t.innerHTML=`
-    <div class="home-title">
-      <h2>Olá, ${esc(primeiroNome)}. Seja bem-vindo(a).</h2>
-      <div class="meta">Escolha uma área para continuar</div>
+    <div class="home-greet">
+      <h2>Olá, ${esc(primeiroNome)}.</h2>
+      <div class="hg-sub">Seja bem-vindo(a) 👋</div>
     </div>
 
     ${blocoAvisos}
@@ -842,6 +853,7 @@ async function telaPainel(){
       ${mod("▤","Lotes","Organização dos animais por lote.","abrirLotesOperacional()")}
       ${mod("☑","Eventos de Manejo","Marcar, medicar ou trocar de lote.","telaManejo()")}
       ${mod("🌱","Gestão de Pastos","Pastos, capim, área e situação.","telaGestaoPasto()")}
+      ${mod("📦","Estoque de Insumos","Medicamentos, sal, e itens de manutenção.","telaEstoque()")}
       ${mod("🔔","Avisos","Eventos, manejos e alertas que exigem atenção.","telaAvisos()")}
     </div>
 `;
@@ -885,6 +897,8 @@ const ICONE_PASTO_EV={"Herbicida":"🧪","Roçada":"🌾","Adubação":"🌿","C
 const dataParaTs=s=>{if(!s)return null;const[a,m,d]=s.split("-").map(Number);return new Date(a,(m||1)-1,d||1,12,0,0).getTime();};
 // ---------- Desmama ----------
 const DIAS_DESMAMA=210;
+// Custo de formação atribuído a cada bezerro nascido na propriedade (ganho diferido).
+const CUSTO_BEZERRO=500;
 function desmamaInfo(a){
   if(a.desmamado)return {desmamado:true,dataDesmama:a.dataDesmama||""};
   if(!a.dataNascimento)return {desmamado:false,semData:true};
@@ -2322,9 +2336,11 @@ async function finResumo(){
   const rec=lancs.filter(l=>l.tipo==="receita").reduce((s,l)=>s+(l.valor||0),0);
   const cpv=lancs.filter(l=>l.tipo==="receita").reduce((s,l)=>s+(l.custo||0),0);
   const desp=lancs.filter(l=>l.tipo==="despesa").reduce((s,l)=>s+(l.valor||0),0);
-  const resultado=rec-cpv-desp;
+  const ganhoReal=lancs.filter(l=>l.tipo==="receita").reduce((s,l)=>s+(l.ganhoRealizado||0),0);
+  const resultado=rec-cpv-desp+ganhoReal;
   const aReceber=lancs.filter(l=>l.tipo==="receita"&&!l.pago).reduce((s,l)=>s+(l.valor||0),0);
-  const aPagar=lancs.filter(l=>l.tipo==="despesa"&&!l.pago).reduce((s,l)=>s+(l.valor||0),0);
+  const aPagar=lancs.filter(l=>l.tipo==="despesa"&&!l.pago).reduce((s,l)=>s+(l.valor||0),0)
+    +(await getAll("insumo_mov")).filter(m=>m.tipo==="entrada"&&!m.pago).reduce((s,m)=>s+(m.valorTotal||0),0);
   // valor do rebanho (estoque) = custo de estoque dos animais ativos
   const valorRebanho=animais.filter(a=>a.status==="Ativo"&&(!_finProp||propDoAnimal(a)===_finProp))
     .reduce((s,a)=>s+(a.custoEstoque||0),0);
@@ -2445,14 +2461,21 @@ async function finRelatorios(){
   const {propriedades,lotes,animais}=await tudo();
   const propDoAnimal=a=>{const l=lotes.find(x=>x.id===a.loteAtualId);return l?l.propriedadeId:null;};
   const todos=await getAll("lancamentos");
+  const insumos=await getAll("insumos");
+  const movsIns=await getAll("insumo_mov");
+  const estoqueInsumos=insumos.reduce((s,i)=>s+(i.saldo||0)*(i.custoMedio||0),0);
+  const aPagarInsumos=(!_finProp)?movsIns.filter(m=>m.tipo==="entrada"&&!m.pago).reduce((s,m)=>s+(m.valorTotal||0),0):0;
   const lancs=todos.filter(l=>(l.data||"").slice(0,4)===_finAno&&(!_finProp||l.propriedadeId===_finProp));
   const rec=lancs.filter(l=>l.tipo==="receita").reduce((s,l)=>s+(l.valor||0),0);
   const cpv=lancs.filter(l=>l.tipo==="receita").reduce((s,l)=>s+(l.custo||0),0);
   const desp=lancs.filter(l=>l.tipo==="despesa").reduce((s,l)=>s+(l.valor||0),0);
-  const resultado=rec-cpv-desp;
+  const ganhoReal=lancs.filter(l=>l.tipo==="receita").reduce((s,l)=>s+(l.ganhoRealizado||0),0);
+  const resultado=rec-cpv-desp+ganhoReal;
   const estoque=animais.filter(a=>a.status==="Ativo"&&(!_finProp||propDoAnimal(a)===_finProp)).reduce((s,a)=>s+(a.custoEstoque||0),0);
+  // Ganho a realizar (passivo): bezerros nascidos ainda no estoque (vivos)
+  const ganhoAReceber=animais.filter(a=>a.nascidoNaPropriedade===true&&a.status==="Ativo"&&(!_finProp||propDoAnimal(a)===_finProp)).reduce((s,a)=>s+(a.custoEstoque||0),0);
   const aReceber=todos.filter(l=>l.tipo==="receita"&&!l.pago&&(!_finProp||l.propriedadeId===_finProp)).reduce((s,l)=>s+(l.valor||0),0);
-  const aPagar=todos.filter(l=>l.tipo==="despesa"&&!l.pago&&(!_finProp||l.propriedadeId===_finProp)).reduce((s,l)=>s+(l.valor||0),0);
+  const aPagar=todos.filter(l=>l.tipo==="despesa"&&!l.pago&&(!_finProp||l.propriedadeId===_finProp)).reduce((s,l)=>s+(l.valor||0),0)+aPagarInsumos;
   const linhaDRE=(lbl,v,cor)=>`<div class="card row" style="cursor:default"><div class="ti" style="font-size:14px">${lbl}</div><div style="font-weight:800;color:${cor||'var(--texto)'}">${moeda(v)}</div></div>`;
   const porCat=(tipo)=>{
     const map={};
@@ -2464,21 +2487,40 @@ async function finRelatorios(){
   };
   // Partidas dobradas do período
   const partidasDe=l=>{const out=[];const contra=l.pago?"Banco/Caixa":(l.tipo==="receita"?"Clientes (a receber)":"Fornecedores (a pagar)");
-    if(l.tipo==="receita"){out.push([contra,"Receita de vendas",l.valor||0]);if((l.custo||0)>0)out.push(["CPV","Estoque de bovinos",l.custo]);}
+    if(l.tipo==="receita"){out.push([contra,"Receita de vendas",l.valor||0]);
+      if((l.custo||0)>0)out.push(["CPV","Estoque de semoventes",l.custo]);
+      if((l.ganhoRealizado||0)>0)out.push(["Ganho a realizar – semoventes","Ganho realizado com semoventes",l.ganhoRealizado]);}
+    else if(l.origem==="consumo_insumo")out.push(["Despesas","Estoque de insumos",l.valor||0]);
     else out.push(["Despesas",contra,l.valor||0]);return out;};
-  const razao=lancs.slice().sort((a,b)=>(b.data||"").localeCompare(a.data||"")).map(l=>`<div class="card" style="cursor:default">
-    <div class="meta">${fmt(l.data)} · ${esc(l.descricao||l.categoria)}</div>
-    ${partidasDe(l).map(([d,c,v])=>`<div style="display:flex;justify-content:space-between;gap:8px;font-size:13px;margin-top:3px"><span>D <b>${d}</b> / C <b>${c}</b></span><span style="white-space:nowrap;font-weight:700">${moeda(v)}</span></div>`).join("")}</div>`);
+  const eventos=[];
+  lancs.forEach(l=>eventos.push({data:l.data,desc:l.descricao||l.categoria,partidas:partidasDe(l)}));
+  // Nascimentos do período: D Estoque de Semoventes / C Ganho a realizar
+  animais.filter(a=>a.nascidoNaPropriedade===true&&(a.dataNascimento||"").slice(0,4)===_finAno&&(a.custoEstoque||0)>0&&(!_finProp||propDoAnimal(a)===_finProp))
+    .forEach(a=>eventos.push({data:a.dataNascimento,desc:`Nascimento ${rotulo(a)} ${codAnimal(a)}`,
+      partidas:[["Estoque de semoventes","Ganho a realizar – semoventes",a.custoEstoque||0]]}));
+  // Compras de insumo do período (entradas): D Estoque de insumos / C Banco ou Fornecedores
+  if(!_finProp){
+    const nomeIns=id=>(insumos.find(i=>i.id===id)||{}).nome||"insumo";
+    movsIns.filter(m=>m.tipo==="entrada"&&(m.data||"").slice(0,4)===_finAno)
+      .forEach(m=>eventos.push({data:m.data,desc:`Compra ${nomeIns(m.insumoId)}`,
+        partidas:[["Estoque de insumos",m.pago?"Banco/Caixa":"Fornecedores (a pagar)",m.valorTotal||0]]}));
+  }
+  const razao=eventos.sort((a,b)=>(b.data||"").localeCompare(a.data||"")).map(ev=>`<div class="card" style="cursor:default">
+    <div class="meta">${fmt(ev.data)} · ${esc(ev.desc)}</div>
+    ${ev.partidas.map(([d,c,v])=>`<div style="display:flex;justify-content:space-between;gap:8px;font-size:13px;margin-top:3px"><span>D <b>${d}</b> / C <b>${c}</b></span><span style="white-space:nowrap;font-weight:700">${moeda(v)}</span></div>`).join("")}</div>`);
   $t.innerHTML=`${finHead()}${finTabsBar("relatorios")}
     <div class="meta" style="margin:0 4px 12px">Ano ${_finAno}${_finProp?"":" · todas as propriedades"}</div>
     <div class="h3">Resultado do período (competência)</div>
     ${linhaDRE("Receita de vendas",rec,"var(--verde)")}
     ${linhaDRE("(−) CPV — custo dos vendidos",-cpv,"var(--perigo)")}
-    ${linhaDRE("(=) Margem bruta do rebanho",rec-cpv,rec-cpv>=0?"var(--verde)":"var(--perigo)")}
+    ${ganhoReal>0?linhaDRE("(+) Ganho realizado (bezerros vendidos)",ganhoReal,"var(--verde)"):""}
+    ${linhaDRE("(=) Margem bruta do rebanho",rec-cpv+ganhoReal,rec-cpv+ganhoReal>=0?"var(--verde)":"var(--perigo)")}
     ${linhaDRE("(−) Despesas do período",-desp,"var(--perigo)")}
     ${linhaDRE("(=) Resultado",resultado,resultado>=0?"var(--verde)":"var(--perigo)")}
     <div class="h3">Posição atual (patrimônio)</div>
-    ${linhaDRE("🐄 Estoque de bovinos (valor do rebanho)",estoque)}
+    ${linhaDRE("🐄 Estoque de semoventes (valor do rebanho)",estoque)}
+    ${estoqueInsumos>0?linhaDRE("📦 Estoque de insumos",estoqueInsumos):""}
+    ${ganhoAReceber>0?linhaDRE("🍼 Ganho a realizar (bezerros no estoque)",ganhoAReceber,"var(--muted)"):""}
     ${linhaDRE("⏳ Clientes — a receber",aReceber)}
     ${linhaDRE("📌 Fornecedores — a pagar",aPagar)}
     <div class="h3">Receitas por categoria</div>${porCat("receita")}
@@ -2487,14 +2529,178 @@ async function finRelatorios(){
     ${razao.length?verMais(razao,"lançamento(s)"):`<div class="meta" style="padding:2px 4px 8px">Sem lançamentos no período.</div>`}`;
 }
 
+/* ======================= ESTOQUE DE INSUMOS ======================= */
+function catsDoGrupo(g){return g==="manutencao"?CAT_INSUMO_MANUT:CAT_INSUMO_GADO;}
+const numFmt=n=>Number(n||0).toLocaleString('pt-BR',{maximumFractionDigits:3});
+
+async function telaEstoque(){
+  if(!(await podeUsarApp("Estoque de insumos")))return;
+  topoPagina();
+  const insumos=(await getAll("insumos")).sort((a,b)=>(a.nome||"").localeCompare(b.nome||""));
+  const movs=await getAll("insumo_mov");
+  const valorTotal=insumos.reduce((s,i)=>s+(i.saldo||0)*(i.custoMedio||0),0);
+  const aPagarIns=movs.filter(m=>m.tipo==="entrada"&&!m.pago).reduce((s,m)=>s+(m.valorTotal||0),0);
+  const bloco=(gkey,gnome,gic)=>{
+    const itens=insumos.filter(i=>i.grupo===gkey);
+    const linhas=itens.length?itens.map(i=>{
+      const vv=(i.saldo||0)*(i.custoMedio||0);
+      const baixo=(i.saldo||0)<=0;
+      return `<div class="card">
+        <div class="row"><div class="ti" style="font-size:15px">${esc(i.nome)}</div>
+          <div style="white-space:nowrap"><button class="btn-fant" style="padding:2px 6px;color:var(--verde)" onclick="formEditarInsumo('${i.id}')">✎</button>
+          <button class="btn-fant" style="padding:2px 6px;color:var(--perigo)" onclick="excluirInsumo('${i.id}')">✕</button></div></div>
+        <div class="meta">${esc(i.categoria||"")}${i.categoria?" · ":""}Saldo: <b style="color:${baixo?'#c0392b':'var(--texto)'}">${numFmt(i.saldo)} ${esc(i.unidade||"un")}</b> · ${moeda(i.custoMedio||0)}/${esc(i.unidade||"un")} · ${moeda(vv)}</div>
+        <div style="margin-top:8px;display:flex;gap:10px">
+          <button class="btn btn-sec" style="margin:0;flex:1" onclick="formEntradaInsumo('${i.id}')">＋ Entrada</button>
+          <button class="btn btn-sec" style="margin:0;flex:1" onclick="formConsumoInsumo('${i.id}')">－ Consumo</button>
+        </div></div>`;
+    }).join(""):`<div class="meta" style="padding:2px 4px 8px">Nenhum item cadastrado neste grupo.</div>`;
+    return `<div class="h3">${gic} ${gnome}</div>
+      <button class="btn btn-sec" onclick="formNovoInsumo('${gkey}')">+ Novo item</button>
+      ${linhas}`;
+  };
+  $t.innerHTML=`<button class="voltar" onclick="telaPainel()">‹ Gestão Operacional</button>
+    <div class="sechead"><span class="sic">📦</span><h2>Estoque de Insumos</h2></div>
+    <div class="fin-cards" style="margin-bottom:6px">
+      <div class="fin-c"><div class="cl">📦 Valor em estoque</div><div class="cv">${moeda(valorTotal)}</div></div>
+      <div class="fin-c"><div class="cl">📌 A pagar (compras)</div><div class="cv">${moeda(aPagarIns)}</div></div>
+    </div>
+    ${bloco("gado","Insumos do gado","💊")}
+    ${bloco("manutencao","Manutenção da propriedade","🔧")}
+    <div class="h3">Últimos movimentos</div>
+    ${await histEstoque(insumos,movs)}`;
+}
+async function histEstoque(insumos,movs){
+  const nomeIns=id=>(insumos.find(i=>i.id===id)||{}).nome||"item removido";
+  const arr=movs.slice().sort((a,b)=>(b.data||"").localeCompare(a.data||"")||(b.criadoEm||0)-(a.criadoEm||0)).map(m=>{
+    const ent=m.tipo==="entrada";
+    const cor=ent?"var(--verde)":"var(--perigo)";
+    const vv=ent?(m.valorTotal||0):((m.qtd||0)*(m.custoUnit||0));
+    return `<div class="card"><div class="row"><div class="ti" style="font-size:14px">${ent?"＋":"－"} ${esc(nomeIns(m.insumoId))}</div>
+      <div style="font-weight:800;color:${cor};white-space:nowrap">${ent?"":"−"}${moeda(vv)}</div></div>
+      <div class="meta">${fmt(m.data)} · ${numFmt(m.qtd)} ${esc(m.unidade||"")}${ent?(m.pago?" · pago":" · a pagar"):""}${m.obs?" · "+esc(m.obs):""}</div>
+      <div style="margin-top:4px">${ent&&!m.pago?`<button class="btn-fant" style="padding:2px 8px 2px 0;color:var(--verde);font-weight:600" onclick="pagarEntradaInsumo('${m.id}')">Marcar pago</button>`:""}<button class="btn-fant" style="padding:2px 8px;color:var(--perigo)" onclick="excluirMovInsumo('${m.id}')">Excluir</button></div></div>`;
+  });
+  return arr.length?verMais(arr,"movimento(s)"):`<div class="meta" style="padding:2px 4px 8px">Sem movimentos ainda.</div>`;
+}
+async function formNovoInsumo(grupo,editId){
+  const ed=editId?await get("insumos",editId):null;
+  const g=ed?ed.grupo:(grupo||"gado");
+  const cats=catsDoGrupo(g);
+  const optCat=cats.map(c=>`<option value="${esc(c)}" ${ed&&ed.categoria===c?"selected":""}>${c}</option>`).join("");
+  const optUn=UNID_INSUMO.map(u=>`<option value="${u}" ${ed&&ed.unidade===u?"selected":""}>${u}</option>`).join("");
+  abrir(`<h2>${ed?"Editar item":"Novo item de estoque"}</h2>
+    <label>Grupo</label><input value="${g==="manutencao"?"Manutenção da propriedade":"Insumos do gado"}" disabled>
+    <input type="hidden" id="in_grupo" value="${g}">
+    <label>Nome *</label><input id="in_nome" value="${ed?esc(ed.nome||""):""}" placeholder="Ex: Ivermectina 1% / Arame farpado">
+    <label>Categoria</label><select id="in_cat">${optCat}</select>
+    <label>Unidade</label><select id="in_un">${optUn}</select>
+    <div class="lado" style="margin-top:18px"><button class="btn btn-sec" onclick="fechar()">Cancelar</button>
+      <button class="btn" onclick="salvarInsumo(${ed?`'${ed.id}'`:""})">Salvar</button></div>`);
+}
+async function formEditarInsumo(id){formNovoInsumo(null,id);}
+async function salvarInsumo(id){
+  const nome=val("in_nome"); if(!nome)return alert("Dê um nome ao item.");
+  const grupo=val("in_grupo")||"gado", categoria=val("in_cat"), unidade=val("in_un");
+  if(id){const it=await get("insumos",id);if(it){it.nome=nome;it.categoria=categoria;it.unidade=unidade;await put("insumos",it);}}
+  else await put("insumos",{id:uid(),nome,grupo,categoria,unidade,saldo:0,custoMedio:0,criadoEm:Date.now()});
+  fechar();telaEstoque();
+}
+async function excluirInsumo(id){
+  const movs=(await getAll("insumo_mov")).filter(m=>m.insumoId===id);
+  if(movs.length)return alert("Este item tem movimentos registrados. Exclua os movimentos antes (ou mantenha o item para o histórico).");
+  if(!confirm("Excluir este item de estoque?"))return;
+  await del("insumos",id);telaEstoque();
+}
+async function formEntradaInsumo(id){
+  const it=await get("insumos",id); if(!it){telaEstoque();return;}
+  abrir(`<h2>Entrada — ${esc(it.nome)}</h2>
+    <div class="meta" style="margin-bottom:8px">Saldo atual: <b>${numFmt(it.saldo)} ${esc(it.unidade||"un")}</b> · custo médio ${moeda(it.custoMedio||0)}</div>
+    <label>Quantidade (${esc(it.unidade||"un")}) *</label><input id="en_qtd" inputmode="decimal" placeholder="Ex: 10">
+    <label>Valor total pago (R$) *</label><input id="en_valor" inputmode="decimal" placeholder="Ex: 250">
+    <label>Data</label><input id="en_data" type="date" value="${hoje()}">
+    <label>Forma de pagamento</label><select id="en_forma"><option value="vista">À vista</option><option value="prazo">A prazo (fica a pagar)</option></select>
+    <label>Observação (opcional)</label><input id="en_obs" placeholder="Ex: nota, fornecedor…">
+    <div class="lado" style="margin-top:18px"><button class="btn btn-sec" onclick="fechar()">Cancelar</button>
+      <button class="btn" onclick="salvarEntradaInsumo('${id}')">Salvar</button></div>`);
+}
+async function salvarEntradaInsumo(id){
+  const qtd=numBR("en_qtd"), valor=numBR("en_valor");
+  if(qtd==null||qtd<=0)return alert("Informe a quantidade.");
+  if(valor==null||valor<0)return alert("Informe o valor total.");
+  const it=await get("insumos",id); if(!it)return;
+  const saldoAnt=it.saldo||0, custoAnt=it.custoMedio||0, novoSaldo=saldoAnt+qtd;
+  it.custoMedio=novoSaldo>0?((saldoAnt*custoAnt)+valor)/novoSaldo:0; // média móvel ponderada
+  it.saldo=novoSaldo;
+  await put("insumos",it);
+  const forma=(document.getElementById("en_forma")||{}).value||"vista";
+  await put("insumo_mov",{id:uid(),insumoId:id,tipo:"entrada",qtd,unidade:it.unidade||"un",
+    valorTotal:valor,pago:forma==="vista",data:val("en_data"),obs:val("en_obs"),criadoEm:Date.now()});
+  fechar();telaEstoque();
+}
+async function pagarEntradaInsumo(movId){
+  const m=await get("insumo_mov",movId); if(m){m.pago=true;await put("insumo_mov",m);} telaEstoque();
+}
+async function formConsumoInsumo(id){
+  const it=await get("insumos",id); if(!it){telaEstoque();return;}
+  if((it.saldo||0)<=0)return alert("Sem saldo para consumir. Registre uma entrada primeiro.");
+  abrir(`<h2>Consumo — ${esc(it.nome)}</h2>
+    <div class="meta" style="margin-bottom:8px">Saldo: <b>${numFmt(it.saldo)} ${esc(it.unidade||"un")}</b> · custo médio ${moeda(it.custoMedio||0)}</div>
+    <label>Quantidade usada (${esc(it.unidade||"un")}) *</label><input id="co_qtd" inputmode="decimal" placeholder="Ex: 2">
+    <label>Data</label><input id="co_data" type="date" value="${hoje()}">
+    <label>Onde / para que (opcional)</label><input id="co_obs" placeholder="Ex: lote Maiores, cerca do pasto Serra…">
+    <div class="meta" style="margin-top:6px">O valor consumido (custo médio × quantidade) vira <b>despesa</b> do período.</div>
+    <div class="lado" style="margin-top:18px"><button class="btn btn-sec" onclick="fechar()">Cancelar</button>
+      <button class="btn" onclick="salvarConsumoInsumo('${id}')">Registrar consumo</button></div>`);
+}
+async function salvarConsumoInsumo(id){
+  const qtd=numBR("co_qtd");
+  if(qtd==null||qtd<=0)return alert("Informe a quantidade.");
+  const it=await get("insumos",id); if(!it)return;
+  if(qtd>(it.saldo||0)+1e-9)return alert("Quantidade maior que o saldo ("+numFmt(it.saldo)+" "+(it.unidade||"un")+").");
+  const custoUnit=it.custoMedio||0;
+  it.saldo=(it.saldo||0)-qtd; await put("insumos",it);
+  const data=val("co_data"), obs=val("co_obs"), movId=uid();
+  await put("insumo_mov",{id:movId,insumoId:id,tipo:"consumo",qtd,unidade:it.unidade||"un",custoUnit,data,obs,criadoEm:Date.now()});
+  const catDesp=DESPESA_DE_INSUMO[it.grupo]||"Outros";
+  await put("lancamentos",{id:uid(),tipo:"despesa",categoria:catDesp,valor:qtd*custoUnit,
+    data,descricao:`Consumo ${it.nome} (${numFmt(qtd)} ${it.unidade||"un"})`,propriedadeId:null,
+    pago:true,origem:"consumo_insumo",refId:movId,criadoEm:Date.now()});
+  fechar();telaEstoque();
+}
+async function excluirMovInsumo(movId){
+  const m=await get("insumo_mov",movId); if(!m){telaEstoque();return;}
+  if(!confirm("Excluir este movimento? O saldo e o custo médio serão recalculados."))return;
+  if(m.tipo==="consumo"){
+    const lancs=(await getAll("lancamentos")).filter(l=>l.origem==="consumo_insumo"&&l.refId===movId);
+    for(const l of lancs)await del("lancamentos",l.id);
+  }
+  await del("insumo_mov",movId);
+  await reconstruirInsumo(m.insumoId);
+  telaEstoque();
+}
+async function reconstruirInsumo(insumoId){
+  const it=await get("insumos",insumoId); if(!it)return;
+  const movs=(await getAll("insumo_mov")).filter(m=>m.insumoId===insumoId)
+    .sort((a,b)=>(a.data||"").localeCompare(b.data||"")||(a.criadoEm||0)-(b.criadoEm||0));
+  let saldo=0, custo=0;
+  for(const m of movs){
+    if(m.tipo==="entrada"){const ns=saldo+(m.qtd||0);custo=ns>0?((saldo*custo)+(m.valorTotal||0))/ns:0;saldo=ns;}
+    else{saldo=Math.max(0,saldo-(m.qtd||0));}
+  }
+  it.saldo=saldo; it.custoMedio=custo; await put("insumos",it);
+}
+
 async function finConfig(){
   if(!(await podeUsarApp("Acessar configurações financeiras")))return;
   topoPagina();
   $t.innerHTML=`${finHead()}${finTabsBar("config")}
     <div class="card"><b>Como as contas funcionam</b>
       <div class="meta" style="margin-top:8px;line-height:1.55">• Regime de <b>competência</b>: cada valor entra na data do fato, não na data do pagamento.<br>
-      • <b>Compra de animal</b> não é despesa — vira <b>estoque</b> (ativo) pelo preço de compra. Bezerro nascido entra com custo <b>zero</b>.<br>
-      • <b>Venda</b> gera, por partidas dobradas: <b>D</b> Banco/Clientes · <b>C</b> Receita (pelo valor da venda) e <b>D</b> CPV · <b>C</b> Estoque (pelo custo do animal). Receita − CPV = margem.<br>
+      • <b>Compra de animal</b> não é despesa — vira <b>estoque</b> (ativo) pelo preço de compra.<br>
+      • <b>Bezerro nascido</b> na propriedade entra no estoque por R$ ${CUSTO_BEZERRO} (custo de formação), lançado como <b>D</b> Estoque · <b>C</b> Ganho a realizar (passivo) — sem afetar o resultado agora.<br>
+      • <b>Venda</b>: <b>D</b> Banco/Clientes · <b>C</b> Receita e <b>D</b> CPV · <b>C</b> Estoque. Se o animal era um bezerro nascido, o ganho a realizar é realizado (<b>D</b> Ganho a realizar · <b>C</b> Ganho realizado), e só então vira resultado.<br>
+      • <b>Morte</b> de bezerro nascido: estorna (baixa o estoque contra o ganho a realizar), sem tocar no resultado.<br>
       • <b>À vista</b> entra no caixa; <b>a prazo</b> fica em "a receber" (Clientes) até você marcar como recebido.<br>
       • <b>Valor do rebanho</b> = soma do custo de estoque dos animais ativos.</div></div>
     <div class="card"><b>Próxima fase</b><div class="meta" style="margin-top:6px">Capitalizar custos no animal (sanidade, sal) para margem por cabeça/arroba, e recebimento parcelado.</div></div>
@@ -2778,7 +2984,7 @@ async function salvarAnimal(nascimento){
     nascidoNaPropriedade:!!nasceu,
     dataNascimento: nasceu ? val("a_nasc") : "",
     pesoCompraKg: nasceu ? null : numBR("a_pesocompra"),
-    custoEstoque: nasceu ? 0 : (numBR("a_precocompra")||0),
+    custoEstoque: nasceu ? CUSTO_BEZERRO : (numBR("a_precocompra")||0),
     maeId,marcaId,loteAtualId:val("a_lote"),status:"Ativo",foto:_animalFoto||"",criadoEm:Date.now()};
   await put("animais",a);
   if(maeId){const m=await get("animais",maeId);await registrarEvento(a.id,"Nascimento",a.dataNascimento,`Filho(a) de ${m?rotulo(m):"—"}`);}
@@ -2861,6 +3067,7 @@ async function salvarSaida(animalId){
     const lote=a.loteAtualId?await get("lotes",a.loteAtualId):null;
     await put("lancamentos",{id:uid(),tipo:"receita",categoria:"Venda de animais",valor:saida.valor,
       custo:a.custoEstoque||0, formaRecebimento:forma,
+      ganhoRealizado: a.nascidoNaPropriedade===true ? (a.custoEstoque||0) : 0,
       data,descricao:`Venda ${rotulo(a)} ${codAnimal(a)}`,propriedadeId:lote?lote.propriedadeId:null,
       pago:forma==="vista",origem:"venda_animal",refId:id,criadoEm:Date.now()});
   }
@@ -2926,7 +3133,7 @@ async function salvarEdicaoAnimal(id){
   a.nascidoNaPropriedade=nasceu;
   a.dataNascimento = nasceu ? val("e_nasc") : "";
   a.pesoCompraKg = nasceu ? null : numBR("e_pesocompra");
-  a.custoEstoque = nasceu ? 0 : (numBR("e_custo")||0);
+  a.custoEstoque = nasceu ? CUSTO_BEZERRO : (numBR("e_custo")||0);
   a.maeId = nasceu ? (val("e_mae")||null) : null;
   a.marcaId = val("e_marca")||null;
   a.foto = _animalFoto||"";
