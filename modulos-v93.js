@@ -21,22 +21,10 @@
   `;
   document.head.appendChild(css);
 
-  function adicionarModulosPainel(){
-    const heads=[...document.querySelectorAll('#tela .sechead h2')];
-    const h=heads.find(x=>(x.textContent||'').trim()==='Módulos do sistema');
-    if(!h)return;
-    const grid=h.closest('.sechead')?.nextElementSibling;
-    if(!grid||!grid.classList.contains('grid')||grid.querySelector('[data-mod-v93]'))return;
-    const saida=document.createElement('div');
-    saida.className='mod';saida.dataset.modV93='saida';
-    saida.setAttribute('onclick','telaVendaMorteAnimal()');
-    saida.innerHTML='<div class="mic">↩️</div><div class="mt">Venda / Morte de Animal</div><div class="md">Venda individual, múltipla, por lote ou grupo e registro de morte.</div><span class="chev">›</span>';
-    const calc=document.createElement('div');
-    calc.className='mod';calc.dataset.modV93='calc';
-    calc.setAttribute('onclick','telaCalculadoraPecuaria()');
-    calc.innerHTML='<div class="mic">🧮</div><div class="mt">Calculadora da Pecuária</div><div class="md">Ferramentas para cálculos de negociações e indicadores da pecuária.</div><span class="chev">›</span>';
-    grid.append(saida,calc);
-  }
+  // V105+: os módulos "Venda/Morte" e "Calculadora" agora ficam direto no
+  // index.html, organizados em grupos. A injeção antiga foi desativada para
+  // não duplicar os cards nem quebrar o agrupamento.
+  function adicionarModulosPainel(){ /* desativado */ }
 
   const painelOriginal=window.telaPainel;
   if(typeof painelOriginal==='function'){

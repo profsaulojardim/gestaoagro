@@ -163,8 +163,10 @@
   .avatar-cam{position:absolute;right:-3px;bottom:-3px;width:25px;height:25px;border-radius:50%;background:var(--verde);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;border:2px solid #fff;}
   .an-thumb{border-radius:10px;background:var(--verde-lite);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;font-size:18px;}
   .an-thumb img{width:100%;height:100%;object-fit:cover;}
-  .fintabs{display:flex;gap:6px;margin:2px 0 14px;overflow-x:auto;}
-  .fintabs button{flex:1;min-width:82px;padding:9px 6px;border:1.5px solid var(--linha);border-radius:10px;background:#fff;color:var(--muted);font-weight:600;font-size:13px;}
+  .fintabs{display:flex;gap:6px;margin:2px 0 14px;}
+  .submod{font-weight:800;color:var(--verde-esc);font-size:14.5px;margin:18px 4px 9px;}
+  .fintabs button{flex:1;min-width:0;padding:8px 4px;border:1.5px solid var(--linha);border-radius:12px;background:#fff;color:var(--muted);font-weight:600;font-size:12px;display:flex;flex-direction:column;align-items:center;gap:3px;line-height:1.1;}
+  .fintabs button .fi{font-size:17px;line-height:1;}
   .fintabs button.on{background:var(--verde);color:#fff;border-color:var(--verde);}
   .fin-hero{background:var(--verde-esc);color:#fff;border-radius:18px;padding:18px;margin-bottom:16px;}
   .fin-hero .lbl{opacity:.85;font-size:13px;} .fin-hero .num{font-size:32px;font-weight:800;margin-top:2px;}
@@ -847,14 +849,23 @@ async function telaPainel(){
     ${props}
 
     <div class="sechead" style="margin-top:22px"><span class="sic">▦</span><h2>Módulos do sistema</h2></div>
+    <div class="submod">🐄 Rebanho</div>
     <div class="grid">
-      ${mod('<img src="bezerro.png" alt="">',"Nascimento de Bezerros","Bezerros nascidos, mãe e data.","telaNascimentos()")}
       ${mod('<img src="boi.png" alt="">',"Animais","Cadastro, consulta e histórico individual.","abrirAnimaisOperacional()")}
-      ${mod("▤","Lotes","Organização dos animais por lote.","abrirLotesOperacional()")}
+      ${mod('<img src="bezerro.png" alt="">',"Nascimento de Bezerros","Bezerros nascidos, mãe e data.","telaNascimentos()")}
+      ${mod("↩️","Venda / Morte de Animal","Venda individual, múltipla, por lote ou grupo e registro de morte.","telaVendaMorteAnimal()")}
+    </div>
+    <div class="submod">🌱 Manejo & Áreas</div>
+    <div class="grid">
       ${mod("☑","Eventos de Manejo","Marcar, medicar ou trocar de lote.","telaManejo()")}
+      ${mod("▤","Lotes","Organização dos animais por lote.","abrirLotesOperacional()")}
       ${mod("🌱","Gestão de Pastos","Pastos, capim, área e situação.","telaGestaoPasto()")}
+    </div>
+    <div class="submod">📦 Recursos & Alertas</div>
+    <div class="grid">
       ${mod("📦","Estoque de Insumos","Medicamentos, sal, e itens de manutenção.","telaEstoque()")}
       ${mod("🔔","Avisos","Eventos, manejos e alertas que exigem atenção.","telaAvisos()")}
+      ${mod("🧮","Calculadora da Pecuária","Ferramentas para cálculos de negociações e indicadores.","telaCalculadoraPecuaria()")}
     </div>
 `;
 }
@@ -2315,11 +2326,8 @@ async function menuFinanceiro(){
 /* ======================= GESTÃO FINANCEIRA ======================= */
 function finHead(){return `<button class="voltar" onclick="irAba('inicio')">‹ Início</button>
   <div class="sechead"><span class="sic">💰</span><h2>Gestão Financeira</h2></div>`;}
-function finTabsBar(a){return `<div class="fintabs">
-  <button class="${a==='resumo'?'on':''}" onclick="finResumo()">Resumo</button>
-  <button class="${a==='lancamentos'?'on':''}" onclick="finLancamentos()">Lançamentos</button>
-  <button class="${a==='relatorios'?'on':''}" onclick="finRelatorios()">Relatórios</button>
-  <button class="${a==='config'?'on':''}" onclick="finConfig()">Config</button></div>`;}
+function finTabsBar(a){const t=[["resumo","📊","Resumo","finResumo()"],["lancamentos","✏️","Lançar","finLancamentos()"],["relatorios","📈","Relatórios","finRelatorios()"],["config","⚙️","Config","finConfig()"]];
+  return `<div class="fintabs">${t.map(([k,ic,l,fn])=>`<button class="${a===k?'on':''}" onclick="${fn}"><span class="fi">${ic}</span>${l}</button>`).join("")}</div>`;}
 
 async function finResumo(){
   if(!(await podeUsarApp("Acessar gestão financeira")))return;
@@ -2427,6 +2435,13 @@ async function formLancamento(id){
       <option value="receita" ${tipo==="receita"?"selected":""}>Receita (entrada)</option>
       <option value="despesa" ${tipo==="despesa"?"selected":""}>Despesa (saída)</option></select>
     <label>Categoria</label><select id="lc_cat">${optCat}</select>
+    <div id="lc_grp_classe" style="display:${tipo==="despesa"?"block":"none"}">
+      <label>Classificação (para a DRE)</label>
+      <select id="lc_classe">
+        <option value="admin" ${l&&l.classe==="vendas"?"":"selected"}>Despesa administrativa / geral</option>
+        <option value="vendas" ${l&&l.classe==="vendas"?"selected":""}>Despesa com vendas</option>
+      </select>
+    </div>
     <label>Valor (R$) *</label><input id="lc_valor" inputmode="decimal" value="${l&&l.valor!=null?String(l.valor).replace('.',','):""}" placeholder="Ex: 2500">
     <label>Data (competência) *</label><input id="lc_data" type="date" value="${l?l.data:hoje()}">
     <label>Propriedade</label><select id="lc_prop">${optProp}</select>
@@ -2439,6 +2454,7 @@ function finTrocaTipo(){
   const tipo=document.getElementById("lc_tipo").value;
   const cats=tipo==="receita"?CAT_RECEITA:CAT_DESPESA;
   document.getElementById("lc_cat").innerHTML=cats.map(c=>`<option value="${esc(c)}">${c}</option>`).join("");
+  const g=document.getElementById("lc_grp_classe"); if(g)g.style.display=tipo==="despesa"?"block":"none";
 }
 async function salvarLancamento(id){
   if(!(await podeUsarApp("Salvar lançamento financeiro")))return;
@@ -2447,8 +2463,9 @@ async function salvarLancamento(id){
   if(!data)return alert("Informe a data de competência.");
   const pago=(document.getElementById("lc_pago")||{}).value==="1";
   const prop=val("lc_prop")||null, desc=val("lc_desc");
-  if(id){const l=await get("lancamentos",id);if(l){Object.assign(l,{tipo,categoria,valor,data,propriedadeId:prop,descricao:desc,pago});await put("lancamentos",l);}}
-  else await put("lancamentos",{id:uid(),tipo,categoria,valor,data,propriedadeId:prop,descricao:desc,pago,origem:"manual",refId:null,criadoEm:Date.now()});
+  const classe=tipo==="despesa"?((document.getElementById("lc_classe")||{}).value||"admin"):null;
+  if(id){const l=await get("lancamentos",id);if(l){Object.assign(l,{tipo,categoria,valor,data,propriedadeId:prop,descricao:desc,pago,classe});await put("lancamentos",l);}}
+  else await put("lancamentos",{id:uid(),tipo,categoria,valor,data,propriedadeId:prop,descricao:desc,pago,classe,origem:"manual",refId:null,criadoEm:Date.now()});
   fechar();finLancamentos();
 }
 async function excluirLancamento(id){if(!confirm("Excluir este lançamento?"))return;await del("lancamentos",id);finLancamentos();}
@@ -2469,6 +2486,8 @@ async function finRelatorios(){
   const rec=lancs.filter(l=>l.tipo==="receita").reduce((s,l)=>s+(l.valor||0),0);
   const cpv=lancs.filter(l=>l.tipo==="receita").reduce((s,l)=>s+(l.custo||0),0);
   const desp=lancs.filter(l=>l.tipo==="despesa").reduce((s,l)=>s+(l.valor||0),0);
+  const despVendas=lancs.filter(l=>l.tipo==="despesa"&&l.classe==="vendas").reduce((s,l)=>s+(l.valor||0),0);
+  const despAdmin=desp-despVendas;
   const ganhoReal=lancs.filter(l=>l.tipo==="receita").reduce((s,l)=>s+(l.ganhoRealizado||0),0);
   const resultado=rec-cpv-desp+ganhoReal;
   const estoque=animais.filter(a=>a.status==="Ativo"&&(!_finProp||propDoAnimal(a)===_finProp)).reduce((s,a)=>s+(a.custoEstoque||0),0);
@@ -2514,8 +2533,10 @@ async function finRelatorios(){
     ${linhaDRE("Receita de vendas",rec,"var(--verde)")}
     ${linhaDRE("(−) CPV — custo dos vendidos",-cpv,"var(--perigo)")}
     ${ganhoReal>0?linhaDRE("(+) Ganho realizado (bezerros vendidos)",ganhoReal,"var(--verde)"):""}
-    ${linhaDRE("(=) Margem bruta do rebanho",rec-cpv+ganhoReal,rec-cpv+ganhoReal>=0?"var(--verde)":"var(--perigo)")}
-    ${linhaDRE("(−) Despesas do período",-desp,"var(--perigo)")}
+    ${linhaDRE("(=) Lucro bruto",rec-cpv+ganhoReal,rec-cpv+ganhoReal>=0?"var(--verde)":"var(--perigo)")}
+    ${linhaDRE("(−) Despesas operacionais",-desp,"var(--perigo)")}
+    <div class="card row" style="cursor:default;margin-left:14px"><div class="ti" style="font-size:13px;color:var(--muted)">• Administrativas / gerais</div><div style="font-weight:700;color:var(--perigo)">${moeda(-despAdmin)}</div></div>
+    <div class="card row" style="cursor:default;margin-left:14px"><div class="ti" style="font-size:13px;color:var(--muted)">• Com vendas</div><div style="font-weight:700;color:var(--perigo)">${moeda(-despVendas)}</div></div>
     ${linhaDRE("(=) Resultado",resultado,resultado>=0?"var(--verde)":"var(--perigo)")}
     <div class="h3">Posição atual (patrimônio)</div>
     ${linhaDRE("🐄 Estoque de semoventes (valor do rebanho)",estoque)}
@@ -2663,7 +2684,7 @@ async function salvarConsumoInsumo(id){
   const data=val("co_data"), obs=val("co_obs"), movId=uid();
   await put("insumo_mov",{id:movId,insumoId:id,tipo:"consumo",qtd,unidade:it.unidade||"un",custoUnit,data,obs,criadoEm:Date.now()});
   const catDesp=DESPESA_DE_INSUMO[it.grupo]||"Outros";
-  await put("lancamentos",{id:uid(),tipo:"despesa",categoria:catDesp,valor:qtd*custoUnit,
+  await put("lancamentos",{id:uid(),tipo:"despesa",categoria:catDesp,valor:qtd*custoUnit,classe:"admin",
     data,descricao:`Consumo ${it.nome} (${numFmt(qtd)} ${it.unidade||"un"})`,propriedadeId:null,
     pago:true,origem:"consumo_insumo",refId:movId,criadoEm:Date.now()});
   fechar();telaEstoque();
