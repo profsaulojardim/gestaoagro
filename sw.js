@@ -1,8 +1,8 @@
 /* Service Worker do "Gestão do Rebanho"
-   V111: animais baixados separados do rebanho ativo, sem cachear Supabase. */
+   V112: classificação financeira e apropriação de custos, sem cachear Supabase. */
 
-const CACHE = "rebanho-v111";
-const APP_VERSION = "111";
+const CACHE = "rebanho-v112";
+const APP_VERSION = "112";
 const CORE = ["./manifest.json", "./icon.png", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png", "./boi.png", "./bezerro.png", "./troca-v81.js", "./troca-v81-core.js", "./perfil-backup-v87.js", "./perfil-cleanup-v90.js", "./ui-cleanup-v91.js", "./saida-v92.js", "./modulos-v93.js", "./saida-menu-v94.js", "./venda-financeiro-v109.js", "./financeiro-cleanup-v110.js", "./animais-baixados-v111.js"];
 self.addEventListener("install",e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting()));});
 self.addEventListener("activate",e=>{e.waitUntil((async()=>{const ks=await caches.keys();await Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)));await self.clients.claim();const cs=await self.clients.matchAll({type:"window",includeUncontrolled:true});for(const c of cs){try{const u=new URL(c.url);if(u.origin===self.location.origin){u.searchParams.set("appv",APP_VERSION);await c.navigate(u.href);}}catch(_){}}})());});
