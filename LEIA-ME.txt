@@ -1,0 +1,66 @@
+PACOTE DO SITE — CRIE SUA EMPRESA EM 1 MINUTO
+Curso de Administração — ISECENSA
+
+============================================================
+ARQUIVOS DO PACOTE
+============================================================
+
+Páginas:
+- index.html              Página principal (totem): nome do aluno,
+                          5 perguntas, resultado com perfil + empresa
+                          gerada e QR code para o card.
+- cartao.html             Página do card do aluno (aberta pelo QR code):
+                          tira a foto (câmera ao vivo no celular ou no
+                          computador) ou usa uma foto escolhida, e monta
+                          o card para baixar/compartilhar.
+
+Imagens:
+- logo-faculdade.png            Logo do ISECENSA (topo da página principal).
+- logo-administracao.png        Logo "ISECENSA Administração" (topo da
+                                página principal e tela de cadastro).
+- icone-hero.png                Ilustração do foguete na tela inicial.
+- banner-completo-isecensa.jpg  Banner institucional usado na montagem
+                                do card do aluno (cartao.html).
+- favicon.png                   Ícone da aba do navegador.
+
+Outros:
+- LEIA-ME.txt             Este arquivo.
+
+============================================================
+COMO PUBLICAR
+============================================================
+
+1. Extraia o ZIP.
+2. Envie TODOS os arquivos para a raiz do repositório/site
+   (mesma pasta, sem subpastas).
+3. Mantenha os nomes dos arquivos exatamente como estão — as
+   páginas procuram as imagens por esses nomes.
+4. Mantenha o arquivo principal como index.html.
+5. Depois de publicar, atualize a página com Ctrl+Shift+R para
+   limpar o cache do navegador.
+
+============================================================
+PRIVACIDADE — NADA É SALVO
+============================================================
+
+- O site NÃO usa banco de dados e não envia dados a nenhum servidor.
+- Só é pedido o nome do aluno (para o resultado e o card). Telefone,
+  escola, série e consentimentos foram retirados.
+- Nome e respostas ficam apenas na memória da página e somem ao
+  clicar em "Refazer", no reinício automático por inatividade ou ao
+  fechar/recarregar a página. Nada é gravado no navegador
+  (localStorage, sessionStorage ou cookies).
+- Ao abrir, a página apaga qualquer dado que versões anteriores do
+  site tenham deixado guardado no navegador do totem.
+- O card (cartao.html) recebe os dados pelo próprio link do QR code
+  e monta a foto só no celular do aluno — nada é enviado.
+- O painel de cadastros (gestaodecadastro.html) foi removido.
+- Única conexão externa: o carregamento da biblioteca que desenha o
+  QR code (cdnjs.cloudflare.com). Nenhum dado do aluno é enviado.
+
+CÂMERA: o botão "Tirar minha foto" pede permissão para usar a câmera.
+Isso só funciona com o site em https (o GitHub Pages já é https). Se a
+permissão for negada, o aluno pode usar "Escolher uma foto".
+
+IMPORTANTE: ao publicar, apague também o arquivo gestaodecadastro.html
+do repositório/site, se ele ainda estiver lá.

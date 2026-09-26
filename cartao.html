@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Meu card — Crie sua Empresa em 1 Minuto</title>
+<link rel="icon" type="image/png" href="./favicon.png">
+<meta name="robots" content="noindex, nofollow">
+<style>
+  :root {
+    --azul: #0E3880;
+    --azul-escuro: #08295f;
+    --azul-medio: #2d66c3;
+    --azul-claro: #bdd7ff;
+    --azul-nevoa: #f3f7ff;
+    --texto: #10224a;
+    --texto-suave: #536383;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  html, body { min-height: 100%; }
+
+  body {
+    font-family: Inter, "Segoe UI", Arial, sans-serif;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(189, 215, 255, 0.25), transparent 26rem),
+      radial-gradient(circle at 88% 70%, rgba(14, 56, 128, 0.08), transparent 26rem),
+      #ffffff;
+    color: var(--texto);
+    min-height: 100dvh;
+  }
+
+  .pagina {
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 26px 18px 40px;
+  }
+
+  .marca-topo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--azul);
+    font-weight: 800;
+    font-size: 13px;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    margin-bottom: 22px;
+    text-align: center;
+  }
+
+  .tela { display: none; width: 100%; max-width: 420px; flex-direction: column; align-items: center; text-align: center; }
+  .tela--ativa { display: flex; }
+
+  h1 {
+    font-size: clamp(24px, 7vw, 30px);
+    color: var(--texto);
+    font-weight: 800;
+  }
+
+  .subtitulo {
+    margin-top: 10px;
+    color: var(--texto-suave);
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  .subtitulo strong { color: var(--azul); }
+
+  .icone-camera {
+    margin: 26px 0 8px;
+    font-size: 56px;
+  }
+
+  .btn-camera {
+    margin-top: 22px;
+    width: 100%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background: var(--azul);
+    color: #fff;
+    font-weight: 800;
+    font-size: 16px;
+    padding: 18px 20px;
+    border-radius: 18px;
+    box-shadow: 0 18px 36px rgba(14, 56, 128, 0.28);
+    cursor: pointer;
+    border: none;
+  }
+
+  .btn-camera:active { background: var(--azul-escuro); }
+
+  input[type="file"] { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+
+  .aviso-privacidade {
+    margin-top: 18px;
+    color: var(--texto-suave);
+    font-size: 12px;
+    opacity: 0.9;
+    max-width: 340px;
+  }
+
+  /* Câmera ao vivo (webcam do computador ou câmera do celular) */
+  .webcam-caixa {
+    position: relative;
+    width: 100%;
+    margin-top: 18px;
+    border-radius: 22px;
+    overflow: hidden;
+    background: #0b1a38;
+    aspect-ratio: 3 / 4;
+    box-shadow: 0 18px 36px rgba(14, 56, 128, 0.22);
+  }
+  .webcam-caixa video {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+    transform: scaleX(-1); /* espelhado, como um espelho */
+  }
+  .webcam-contagem {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 96px; font-weight: 800; color: #fff; text-shadow: 0 6px 24px rgba(0,0,0,0.45);
+    pointer-events: none;
+  }
+  .webcam-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; transition: opacity 0.25s; }
+  .webcam-flash.ativo { opacity: 0.9; transition: none; }
+  .btn-camera--secundario {
+    background: #fff; color: var(--azul); box-shadow: none; border: 2px solid var(--azul-claro); margin-top: 12px;
+  }
+  .btn-camera:disabled { opacity: 0.6; cursor: default; }
+
+  .creditos {
+    margin-top: auto;
+    padding-top: 28px;
+    color: var(--texto-suave);
+    font-size: 11px;
+    opacity: 0.7;
+    text-align: center;
+  }
+
+  .spinner {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    border: 6px solid var(--azul-nevoa);
+    border-top-color: var(--azul);
+    animation: girar 0.9s linear infinite;
+    margin: 30px 0 6px;
+  }
+
+  @keyframes girar { to { transform: rotate(360deg); } }
+
+  .card-final-wrap {
+    width: 100%;
+    border-radius: 22px;
+    overflow: hidden;
+    box-shadow: 0 24px 60px rgba(14, 56, 128, 0.22);
+    margin-top: 6px;
+  }
+
+  .card-final-wrap img { display: block; width: 100%; height: auto; }
+
+  .acoes-final {
+    margin-top: 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .btn-acao {
+    width: 100%;
+    padding: 16px 18px;
+    border-radius: 16px;
+    font-weight: 800;
+    font-size: 15px;
+    border: none;
+    cursor: pointer;
+  }
+
+  .btn-acao--principal { background: var(--azul); color: #fff; box-shadow: 0 14px 30px rgba(14, 56, 128, 0.26); }
+  .btn-acao--principal:active { background: var(--azul-escuro); }
+  .btn-acao--secundaria { background: var(--azul-nevoa); color: var(--azul); }
+  .btn-acao--terciaria { background: transparent; color: var(--texto-suave); text-decoration: underline; font-weight: 700; }
+
+  .erro-caixa { margin-top: 26px; }
+  .erro-caixa .emoji { font-size: 42px; }
+  .erro-caixa p { margin-top: 14px; color: var(--texto-suave); font-size: 14px; line-height: 1.6; }
+
+  canvas#canvas-cartao { display: none; }
+
+  /* Navegação entre o resultado e uma nova experiência. */
+  .navegacao-card {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    max-width: 420px;
+    gap: 12px;
+    width: 100%;
+    margin: 24px 0 28px;
+  }
+  .navegacao-card[hidden] { display: none; }
+  .navegacao-card a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    min-height: 52px;
+    padding: 13px 14px;
+    border: 1px solid #d4e1f5;
+    border-radius: 16px;
+    background: #fff;
+    color: var(--azul);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.35;
+    text-align: center;
+    text-decoration: none;
+    box-shadow: 0 4px 12px rgba(14,56,128,.06);
+    transition: background .15s ease, box-shadow .15s ease;
+  }
+  .navegacao-card a:visited { color: var(--azul); }
+  .navegacao-card a svg { width: 19px; height: 19px; flex-shrink: 0; }
+  .navegacao-card #btn-nova-experiencia {
+    background: var(--azul);
+    border-color: var(--azul);
+    color: #fff;
+    box-shadow: 0 6px 16px rgba(14,56,128,.16);
+  }
+  .navegacao-card a:focus-visible { outline: 3px solid #6495ed; outline-offset: 4px; }
+  .navegacao-card a:active { box-shadow: none; }
+  @media (hover: hover) {
+    .navegacao-card a:hover { background: #edf3ff; }
+    .navegacao-card #btn-nova-experiencia:hover { background: var(--azul-escuro); }
+  }
+  @media (max-width: 420px) {
+    .navegacao-card { grid-template-columns: 1fr; gap: 10px; margin: 20px 0 24px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .navegacao-card a { transition: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="pagina">
+    <div class="marca-topo">🎓 Crie sua Empresa em 1 Minuto · Curso de Administração</div>
+
+    <nav class="navegacao-card" id="navegacao-card" aria-label="Navegação da experiência" hidden>
+      <a href="./index.html#resultado" id="btn-voltar-resultado"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5m7-7-7 7 7 7"/></svg><span>Voltar ao resultado</span></a>
+      <a href="./index.html" id="btn-nova-experiencia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 7a7 7 0 0 1 11.6-1L20 9M4 15l2.3 3A7 7 0 0 0 17.9 17"/></svg><span>Iniciar nova experiência</span></a>
+    </nav>
+    <!-- ================= TELA: erro (link inválido/expirado) ================= -->
+    <section class="tela" id="tela-erro">
+      <div class="erro-caixa">
+        <div class="emoji">😕</div>
+        <h1>Não achamos os dados do seu card</h1>
+        <p>Esse link parece incompleto ou expirado. Volte ao resultado e abra a etapa da foto novamente, ou escaneie o QR code.</p>
+      </div>
+    </section>
+
+    <!-- ================= TELA: tirar a foto ================= -->
+    <section class="tela" id="tela-camera">
+      <div class="icone-camera">📸</div>
+      <h1 id="titulo-camera">Hora da sua foto!</h1>
+      <p class="subtitulo" id="subtitulo-camera"></p>
+      <button class="btn-camera" id="btn-tirar-foto" type="button">📷 Tirar minha foto</button>
+      <input type="file" accept="image/*" capture="user" id="input-foto" tabindex="-1" aria-hidden="true">
+      <label class="btn-camera" for="input-galeria">🖼️ Escolher uma foto</label>
+      <input type="file" accept="image/*" id="input-galeria">
+      <p class="camera-mensagem" id="camera-mensagem" role="status" aria-live="polite"></p>
+      <p class="aviso-privacidade">Sua foto é usada apenas neste aparelho, para montar a imagem do card. Ela não é enviada nem guardada em nenhum servidor.</p>
+    </section>
+
+    <!-- ================= TELA: câmera ao vivo ================= -->
+    <section class="tela" id="tela-webcam">
+      <h1>Olhe para a câmera 😄</h1>
+      <div class="webcam-caixa">
+        <video id="webcam-video" autoplay playsinline muted></video>
+        <div class="webcam-contagem" id="webcam-contagem" aria-live="polite"></div>
+        <div class="webcam-flash" id="webcam-flash"></div>
+      </div>
+      <button class="btn-camera" id="btn-capturar" type="button">📸 Tirar foto</button>
+      <button class="btn-camera btn-camera--secundario" id="btn-cancelar-webcam" type="button">Cancelar</button>
+    </section>
+
+    <!-- ================= TELA: processando ================= -->
+    <section class="tela" id="tela-processando-foto">
+      <div class="spinner" aria-hidden="true"></div>
+      <h1>Montando seu card...</h1>
+    </section>
+
+    <!-- ================= TELA: card pronto ================= -->
+    <section class="tela" id="tela-final">
+      <h1>Seu card ficou assim!</h1>
+      <div class="card-final-wrap">
+        <img id="img-card-final" alt="Card personalizado do Crie sua Empresa em 1 Minuto">
+      </div>
+      <div class="acoes-final">
+        <button class="btn-acao btn-acao--principal" id="btn-baixar" type="button">⬇️ Baixar imagem</button>
+        <button class="btn-acao btn-acao--secundaria" id="btn-compartilhar" type="button" style="display:none;">📤 Compartilhar</button>
+        <button class="btn-acao btn-acao--terciaria" id="btn-outra-foto" type="button">🔄 Trocar foto</button>
+      </div>
+    </section>
+
+    <footer class="creditos">Desenvolvido pelo Prof. Saulo Jardim e Prof. Túlio Baita</footer>
+  </div>
+
+  <canvas id="canvas-cartao" width="1080" height="1920"></canvas>
+
+  <script>
+    // ---------- 1) Lê os dados da empresa embutidos no link do QR code ----------
+    // (nenhuma leitura no banco acontece aqui — os dados vêm só da URL)
+    function lerDadosDaUrl() {
+      const params = new URLSearchParams(location.search);
+      const codificado = params.get('d');
+      if (!codificado) return null;
+      try {
+        const json = decodeURIComponent(escape(window.atob(codificado)));
+        const dados = JSON.parse(json);
+        if (!dados || !dados.e) return null;
+        return dados;
+      } catch (erro) {
+        console.error('Link do card inválido:', erro);
+        return null;
+      }
+    }
+
+    function mostrarTela(id) {
+      document.querySelectorAll('.tela').forEach(function (tela) {
+        tela.classList.toggle('tela--ativa', tela.id === id);
+      });
+    }
+
+    const dadosCard = lerDadosDaUrl();
+
+    if (!dadosCard) {
+      mostrarTela('tela-erro');
+    } else {
+      const primeiroNome = (dadosCard.n || 'Futuro(a) administrador(a)').split(' ')[0];
+      document.getElementById('titulo-camera').textContent = 'Sorria, ' + primeiroNome + '!';
+      document.getElementById('subtitulo-camera').innerHTML =
+        'Vamos colocar sua foto no card da <strong>' + escaparHtml(dadosCard.e) + '</strong>, pronto pra compartilhar.';
+      mostrarTela('tela-camera');
+    }
+
+    function escaparHtml(texto) {
+      const div = document.createElement('div');
+      div.textContent = texto == null ? '' : String(texto);
+      return div.innerHTML;
+    }
+
+    // ---------- 2) Pré-carrega a imagem fixa do topo do card (banner oficial) ----------
+    function carregarImagem(src) {
+      return new Promise(function (resolve, reject) {
+        const img = new Image();
+        img.onload = function () { resolve(img); };
+        img.onerror = reject;
+        img.src = src;
+      });
+    }
+
+    // Banner único (prédio + brasão + "ISECENSA" + frases) já pronto — o card
+    // só encaixa a foto do aluno e os textos dinâmicos por cima dele.
+    const imagemBannerPronta = carregarImagem('./banner-completo-isecensa.jpg').catch(function (erro) {
+      console.error('Falha ao carregar o banner do card:', erro);
+      return null;
+    });
+
+    // ---------- 3) Funções de desenho no canvas ----------
+    function caminhoArredondado(ctx, x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+    }
+
+    // Desenha uma imagem tipo "object-fit: cover" dentro de um retângulo.
+    function desenharImagemCover(ctx, img, x, y, w, h) {
+      const escala = Math.max(w / img.width, h / img.height);
+      const larguraDesenho = img.width * escala;
+      const alturaDesenho = img.height * escala;
+      const offsetX = x + (w - larguraDesenho) / 2;
+      const offsetY = y + (h - alturaDesenho) / 2;
+      ctx.drawImage(img, offsetX, offsetY, larguraDesenho, alturaDesenho);
+    }
+
+    function desenharImagemCoverCirculo(ctx, img, cx, cy, r) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.clip();
+      desenharImagemCover(ctx, img, cx - r, cy - r, r * 2, r * 2);
+      ctx.restore();
+    }
+
+    // Quebra texto em várias linhas respeitando uma largura máxima; retorna
+    // o Y logo abaixo da última linha desenhada.
+    function desenharTextoComQuebra(ctx, texto, cx, y, larguraMax, alturaLinha) {
+      const palavras = String(texto).split(' ');
+      let linha = '';
+      let yAtual = y;
+      for (let i = 0; i < palavras.length; i++) {
+        const testeLinha = linha ? linha + ' ' + palavras[i] : palavras[i];
+        if (ctx.measureText(testeLinha).width > larguraMax && linha) {
+          ctx.fillText(linha, cx, yAtual);
+          linha = palavras[i];
+          yAtual += alturaLinha;
+        } else {
+          linha = testeLinha;
+        }
+      }
+      if (linha) {
+        ctx.fillText(linha, cx, yAtual);
+        yAtual += alturaLinha;
+      }
+      return yAtual;
+    }
+
+    // Reduz o tamanho da fonte até o texto caber na "corda" do círculo na
+    // altura dyAbsoluto (distância vertical até o centro) — evita que
+    // palavras como "ADMINISTRADOR" estourem a borda do selo.
+    function ajustarFonteParaCirculo(ctx, texto, dyAbsoluto, raioCirculo, pesoFonte, tamanhoInicial, tamanhoMinimo) {
+      const paddingInterno = 20;
+      let tamanho = tamanhoInicial;
+      while (tamanho > tamanhoMinimo) {
+        ctx.font = pesoFonte + ' ' + tamanho + 'px Inter, Arial, sans-serif';
+        const largura = ctx.measureText(texto).width;
+        const raioEfetivo = raioCirculo - paddingInterno;
+        const meiaCorda = Math.sqrt(Math.max(raioEfetivo * raioEfetivo - dyAbsoluto * dyAbsoluto, 0));
+        if (largura <= meiaCorda * 2) break;
+        tamanho -= 1;
+      }
+      return tamanho;
+    }
+
+    function desenharEstrelas(ctx, cx, y, quantidade, tamanho, espaco, cor) {
+      ctx.save();
+      ctx.fillStyle = cor;
+      ctx.font = tamanho + 'px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const larguraTotal = (quantidade - 1) * espaco;
+      for (let i = 0; i < quantidade; i++) {
+        ctx.fillText('★', cx - larguraTotal / 2 + i * espaco, y);
+      }
+      ctx.restore();
+    }
+
+    // Desenha um pequeno ícone (0..1 de largura/altura) representando o
+    // setor da empresa, centralizado em (cx, cy) com o lado "lado". Faz as
+    // vezes de "logo" da empresa dentro do cartãozinho — sem depender de
+    // gerar uma logo de verdade, que exigiria IA de imagem em tempo real.
+    function desenharIconeSetor(ctx, chave, cx, cy, lado, cor) {
+      ctx.save();
+      ctx.translate(cx - lado / 2, cy - lado / 2);
+      ctx.scale(lado, lado);
+      ctx.fillStyle = cor;
+      ctx.strokeStyle = cor;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+
+      if (chave === 'tecnologia') {
+        // raio
+        ctx.beginPath();
+        ctx.moveTo(0.58, 0.04);
+        ctx.lineTo(0.28, 0.56);
+        ctx.lineTo(0.46, 0.56);
+        ctx.lineTo(0.38, 0.96);
+        ctx.lineTo(0.74, 0.42);
+        ctx.lineTo(0.54, 0.42);
+        ctx.closePath();
+        ctx.fill();
+      } else if (chave === 'saude') {
+        // coração
+        ctx.beginPath();
+        ctx.moveTo(0.5, 0.84);
+        ctx.bezierCurveTo(0.18, 0.56, 0.04, 0.36, 0.04, 0.2);
+        ctx.bezierCurveTo(0.04, 0.04, 0.22, -0.02, 0.34, 0.06);
+        ctx.bezierCurveTo(0.42, 0.11, 0.48, 0.2, 0.5, 0.27);
+        ctx.bezierCurveTo(0.52, 0.2, 0.58, 0.11, 0.66, 0.06);
+        ctx.bezierCurveTo(0.78, -0.02, 0.96, 0.04, 0.96, 0.2);
+        ctx.bezierCurveTo(0.96, 0.36, 0.82, 0.56, 0.5, 0.84);
+        ctx.closePath();
+        ctx.fill();
+      } else if (chave === 'alimentacao') {
+        // chama (gastronomia/fogo)
+        ctx.beginPath();
+        ctx.moveTo(0.5, 0.02);
+        ctx.bezierCurveTo(0.78, 0.26, 0.88, 0.48, 0.82, 0.66);
+        ctx.bezierCurveTo(0.77, 0.82, 0.62, 0.92, 0.48, 0.9);
+        ctx.bezierCurveTo(0.32, 0.88, 0.18, 0.76, 0.18, 0.6);
+        ctx.bezierCurveTo(0.18, 0.5, 0.24, 0.42, 0.32, 0.37);
+        ctx.bezierCurveTo(0.28, 0.5, 0.34, 0.62, 0.46, 0.63);
+        ctx.bezierCurveTo(0.58, 0.64, 0.62, 0.52, 0.56, 0.4);
+        ctx.bezierCurveTo(0.5, 0.28, 0.44, 0.15, 0.5, 0.02);
+        ctx.closePath();
+        ctx.fill();
+      } else if (chave === 'moda') {
+        // cabide
+        ctx.lineWidth = 0.075;
+        ctx.beginPath();
+        ctx.arc(0.5, 0.14, 0.09, 0.15 * Math.PI, 1.7 * Math.PI);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(0.5, 0.22);
+        ctx.lineTo(0.5, 0.32);
+        ctx.moveTo(0.5, 0.3);
+        ctx.lineTo(0.1, 0.62);
+        ctx.lineTo(0.5, 0.8);
+        ctx.lineTo(0.9, 0.62);
+        ctx.lineTo(0.5, 0.3);
+        ctx.moveTo(0.16, 0.68);
+        ctx.lineTo(0.84, 0.68);
+        ctx.stroke();
+      } else if (chave === 'sustentabilidade') {
+        // folha
+        ctx.beginPath();
+        ctx.moveTo(0.88, 0.12);
+        ctx.bezierCurveTo(0.5, 0.06, 0.12, 0.28, 0.12, 0.64);
+        ctx.bezierCurveTo(0.12, 0.86, 0.34, 0.97, 0.5, 0.91);
+        ctx.bezierCurveTo(0.78, 0.81, 0.94, 0.46, 0.88, 0.12);
+        ctx.closePath();
+        ctx.fill();
+        ctx.save();
+        ctx.strokeStyle = '#0E3880';
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.lineWidth = 0.045;
+        ctx.beginPath();
+        ctx.moveTo(0.22, 0.78);
+        ctx.lineTo(0.74, 0.26);
+        ctx.stroke();
+        ctx.restore();
+      } else {
+        // fallback: monograma com a inicial do nome da empresa
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = '800 0.52px Inter, Arial, sans-serif';
+        const letra = (dadosCard.e || '?').trim().charAt(0).toUpperCase();
+        ctx.fillText(letra, 0.5, 0.54);
+      }
+
+      ctx.restore();
+    }
+
+    // ---------- 4) Monta o card completo no canvas ----------
+    function montarCard(imgFoto) {
+      return imagemBannerPronta.then(function (imagemBanner) {
+        const canvas = document.getElementById('canvas-cartao');
+        const ctx = canvas.getContext('2d');
+        const L = canvas.width;    // 1080
+        const A = canvas.height;   // 1920 — cheio, cabe na tela toda do Stories (9:16)
+
+        // fundo branco em todo o canvas 1080x1920
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, L, A);
+
+        // o conteúdo do card (banner + foto + textos) tem uma altura própria,
+        // menor que 1920 — centraliza ele verticalmente no canvas pra não
+        // sobrar aquela barra preta quando for compartilhado nos Stories
+        const ALTURA_CONTEUDO = 1680;
+        const offsetY = Math.round((A - ALTURA_CONTEUDO) / 2);
+        ctx.save();
+        ctx.translate(0, offsetY);
+
+        // --- faixa superior: banner oficial completo (prédio + brasão +
+        // "ISECENSA" + frases), desenhado por inteiro, sem cortar nada ---
+        const alturaBanner = imagemBanner
+          ? Math.round(L * (imagemBanner.height / imagemBanner.width))
+          : 420;
+        if (imagemBanner) {
+          ctx.drawImage(imagemBanner, 0, 0, L, alturaBanner);
+        } else {
+          ctx.fillStyle = '#0E3880';
+          ctx.fillRect(0, 0, L, alturaBanner);
+        }
+
+        // ---- foto do aluno, círculo central sobre a divisa do banner ----
+        const cyFoto = alturaBanner;
+        const raioFoto = 155;
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(L / 2, cyFoto, raioFoto + 10, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = 'rgba(14, 56, 128, 0.35)';
+        ctx.shadowBlur = 26;
+        ctx.fill();
+        ctx.restore();
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(L / 2, cyFoto, raioFoto + 3, 0, Math.PI * 2);
+        ctx.lineWidth = 6;
+        ctx.strokeStyle = '#0E3880';
+        ctx.stroke();
+        ctx.restore();
+        desenharImagemCoverCirculo(ctx, imgFoto, L / 2, cyFoto, raioFoto);
+
+        // ---- pílula "CEO e Fundador(a)" ----
+        const cargo = dadosCard.c || 'CEO e Fundador(a)';
+        ctx.font = '700 26px Inter, Arial, sans-serif';
+        const larguraCargo = ctx.measureText(cargo).width;
+        const larguraPilula = larguraCargo + 64;
+        const yPilula = cyFoto + raioFoto + 40;
+        ctx.fillStyle = '#0E3880';
+        caminhoArredondado(ctx, L / 2 - larguraPilula / 2, yPilula, larguraPilula, 60, 30);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(cargo, L / 2, yPilula + 31);
+        ctx.textBaseline = 'alphabetic';
+
+        // ---- nome de quem preencheu, logo abaixo do cargo ----
+        const nomeAluno = (dadosCard.n || '').trim();
+        if (nomeAluno) {
+          const larguraMaxNome = L - 2 * 90;
+          let fonteAluno = 46;
+          ctx.font = '800 ' + fonteAluno + 'px Inter, Arial, sans-serif';
+          while (ctx.measureText(nomeAluno).width > larguraMaxNome && fonteAluno > 26) {
+            fonteAluno -= 2;
+            ctx.font = '800 ' + fonteAluno + 'px Inter, Arial, sans-serif';
+          }
+          ctx.fillStyle = '#10224a';
+          ctx.textAlign = 'center';
+          ctx.fillText(nomeAluno, L / 2, yPilula + 116);
+        }
+
+        // ---- cartão branco: nome da empresa + slogan ----
+        const yCartaoEmpresa = yPilula + (nomeAluno ? 160 : 100);
+        const alturaCartaoEmpresa = 165;
+        const margemLateral = 76;
+        ctx.save();
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = 'rgba(14, 56, 128, 0.18)';
+        ctx.shadowBlur = 24;
+        ctx.shadowOffsetY = 8;
+        caminhoArredondado(ctx, margemLateral, yCartaoEmpresa, L - margemLateral * 2, alturaCartaoEmpresa, 24);
+        ctx.fill();
+        ctx.restore();
+
+        // "logo" da empresa: um selinho com ícone do setor (mais parecido
+        // com uma marca de verdade do que só a inicial do nome)
+        const monoX = margemLateral + 32;
+        const monoY = yCartaoEmpresa + alturaCartaoEmpresa / 2 - 42;
+        const monoLado = 80;
+        const gradMono = ctx.createLinearGradient(monoX, monoY, monoX + monoLado, monoY + monoLado);
+        gradMono.addColorStop(0, '#2d66c3');
+        gradMono.addColorStop(1, '#0E3880');
+        ctx.fillStyle = gradMono;
+        caminhoArredondado(ctx, monoX, monoY, monoLado, monoLado, 18);
+        ctx.fill();
+        desenharIconeSetor(ctx, dadosCard.st, monoX + monoLado / 2, monoY + monoLado / 2, monoLado * 0.56, '#ffffff');
+
+        // nome + slogan
+        const textoX = monoX + monoLado + 28;
+        const larguraTexto = margemLateral + (L - margemLateral * 2) - textoX - 24;
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#10224a';
+        ctx.font = '800 40px Inter, Arial, sans-serif';
+        let yNome = yCartaoEmpresa + 66;
+        // reduz o tamanho da fonte se o nome for muito comprido pra caber numa linha
+        let fonteNome = 40;
+        while (ctx.measureText(dadosCard.e || '').width > larguraTexto && fonteNome > 26) {
+          fonteNome -= 2;
+          ctx.font = '800 ' + fonteNome + 'px Inter, Arial, sans-serif';
+        }
+        ctx.fillText(dadosCard.e || '', textoX, yNome);
+
+        ctx.fillStyle = '#536383';
+        ctx.font = '500 24px Inter, Arial, sans-serif';
+        desenharTextoComQuebra(ctx.textAlign === 'left' ? ctx : ctx, dadosCard.s || '', textoX, yNome + 40, larguraTexto, 30);
+        // (desenharTextoComQuebra usa fillText com textAlign atual = 'left', ok)
+
+        // ---- "Eu participei do Crie sua Empresa em 1 Minuto do ISECENSA." ----
+        let yBloco = yCartaoEmpresa + alturaCartaoEmpresa + 78;
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#10224a';
+        ctx.font = '500 28px Inter, Arial, sans-serif';
+        ctx.fillText('Eu participei do', L / 2, yBloco);
+        yBloco += 52;
+        ctx.fillStyle = '#0E3880';
+        ctx.font = '800 40px Inter, Arial, sans-serif';
+        ctx.fillText('Crie sua Empresa em 1 Minuto', L / 2, yBloco);
+        yBloco += 46;
+        ctx.fillStyle = '#10224a';
+        ctx.font = '500 28px Inter, Arial, sans-serif';
+        ctx.fillText('do ISECENSA.', L / 2, yBloco);
+
+        // linha divisória
+        yBloco += 46;
+        ctx.strokeStyle = 'rgba(14, 56, 128, 0.18)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(L / 2 - 90, yBloco);
+        ctx.lineTo(L / 2 + 90, yBloco);
+        ctx.stroke();
+
+        // ---- "Futuro Administrador formado pelo ISECENSA." ----
+        yBloco += 64;
+        ctx.fillStyle = '#0E3880';
+        ctx.font = '800 38px Inter, Arial, sans-serif';
+        ctx.fillText('Futuro Administrador', L / 2, yBloco);
+        yBloco += 44;
+        ctx.fillStyle = '#536383';
+        ctx.font = '500 26px Inter, Arial, sans-serif';
+        ctx.fillText('formado pelo ISECENSA.', L / 2, yBloco);
+
+        // ---- selo circular "FUTURO ADMINISTRADOR" ----
+        const cySelo2 = yBloco + 150;
+        const raioSelo2 = 118;
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(L / 2, cySelo2, raioSelo2, 0, Math.PI * 2);
+        const gradSelo = ctx.createLinearGradient(L / 2 - raioSelo2, cySelo2 - raioSelo2, L / 2 + raioSelo2, cySelo2 + raioSelo2);
+        gradSelo.addColorStop(0, '#2d66c3');
+        gradSelo.addColorStop(1, '#08295f');
+        ctx.fillStyle = gradSelo;
+        ctx.shadowColor = 'rgba(14, 56, 128, 0.3)';
+        ctx.shadowBlur = 20;
+        ctx.fill();
+        ctx.restore();
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(L / 2, cySelo2, raioSelo2 - 6, 0, Math.PI * 2);
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+        ctx.stroke();
+        ctx.restore();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.font = '50px Arial, sans-serif';
+        ctx.fillText('🎓', L / 2, cySelo2 - 34);
+
+        // "ADMINISTRADOR" é a palavra mais larga do selo — reduz a fonte
+        // dinamicamente até caber dentro do círculo, com uma margem interna,
+        // pra nunca mais estourar a borda.
+        const dyFuturo = 8;
+        const tamFuturo = ajustarFonteParaCirculo(ctx, 'FUTURO', dyFuturo, raioSelo2, '800', 24, 14);
+        ctx.font = '800 ' + tamFuturo + 'px Inter, Arial, sans-serif';
+        ctx.fillText('FUTURO', L / 2, cySelo2 + dyFuturo);
+
+        const dyAdm = 34;
+        const tamAdm = ajustarFonteParaCirculo(ctx, 'ADMINISTRADOR', dyAdm, raioSelo2, '800', 22, 13);
+        ctx.font = '800 ' + tamAdm + 'px Inter, Arial, sans-serif';
+        ctx.fillText('ADMINISTRADOR', L / 2, cySelo2 + dyAdm);
+
+        desenharEstrelas(ctx, L / 2, cySelo2 + 70, 3, 20, 24, '#bdd7ff');
+
+        // ---- rodapé ----
+        ctx.fillStyle = '#536383';
+        ctx.font = 'italic 500 26px Inter, Arial, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('#CrieSuaEmpresa · #ISECENSA', L / 2, ALTURA_CONTEUDO - 50);
+
+        ctx.restore();
+
+        return canvas.toDataURL('image/png');
+      });
+    }
+
+    // O campo com capture abre a interface de captura oferecida pelo celular.
+    // A imagem confirmada volta ao app para a montagem local do card.
+    const mensagemCamera = document.getElementById('camera-mensagem');
+    ['input-foto', 'input-galeria'].forEach(function (id) {
+      document.getElementById(id).addEventListener('click', function () {
+        this.value = '';
+        mensagemCamera.textContent = '';
+      });
+    });
+
+    async function concluirFoto(imagem) {
+      mostrarTela('tela-processando-foto');
+      try {
+        const dataUrl = await montarCard(imagem);
+        document.getElementById('img-card-final').src = dataUrl;
+        prepararCompartilhamento(dataUrl);
+        mostrarTela('tela-final');
+      } catch (erro) {
+        mensagemCamera.textContent = 'Não foi possível montar o card. Escolha outra foto e tente novamente.';
+        mostrarTela('tela-camera');
+      }
+    }
+    function receberFoto(evento) {
+      const arquivo = evento.target.files && evento.target.files[0];
+      if (!arquivo || !dadosCard) return;
+      mensagemCamera.textContent = '';
+      mostrarTela('tela-processando-foto');
+      const leitor = new FileReader();
+      function falhaFoto() {
+        mensagemCamera.textContent = 'Não foi possível ler esta foto. Escolha outra imagem.';
+        mostrarTela('tela-camera');
+      }
+      leitor.onerror = falhaFoto;
+      leitor.onload = function () {
+        const imgFoto = new Image();
+        imgFoto.onload = function () { concluirFoto(imgFoto); };
+        imgFoto.onerror = falhaFoto;
+        imgFoto.src = leitor.result;
+      };
+      leitor.readAsDataURL(arquivo);
+    }
+    document.getElementById('input-foto').addEventListener('change', receberFoto);
+
+    // ---------- Câmera ao vivo ----------
+    // No computador, o campo de arquivo com "capture" só abre o seletor de
+    // arquivos. Por isso usamos a câmera do navegador (getUserMedia), que
+    // funciona em computador e celular. Se não houver câmera ou a permissão
+    // for negada, caímos no campo de arquivo como antes.
+    const videoWebcam = document.getElementById('webcam-video');
+    const btnCapturar = document.getElementById('btn-capturar');
+    let streamWebcam = null;
+
+    function pararWebcam() {
+      if (streamWebcam) {
+        streamWebcam.getTracks().forEach(function (t) { t.stop(); });
+        streamWebcam = null;
+      }
+      videoWebcam.srcObject = null;
+    }
+
+    function usarSeletorDeArquivo(mensagem) {
+      pararWebcam();
+      mostrarTela('tela-camera');
+      if (mensagem) { mensagemCamera.textContent = mensagem; }
+      const input = document.getElementById('input-foto');
+      input.value = '';
+      input.click();
+    }
+
+    document.getElementById('btn-tirar-foto').addEventListener('click', function () {
+      mensagemCamera.textContent = '';
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        usarSeletorDeArquivo();
+        return;
+      }
+      navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 1280 } },
+        audio: false
+      }).then(function (stream) {
+        streamWebcam = stream;
+        videoWebcam.srcObject = stream;
+        btnCapturar.disabled = false;
+        document.getElementById('webcam-contagem').textContent = '';
+        mostrarTela('tela-webcam');
+      }).catch(function (erro) {
+        console.warn('Câmera indisponível:', erro);
+        const negado = erro && (erro.name === 'NotAllowedError' || erro.name === 'SecurityError');
+        pararWebcam();
+        mostrarTela('tela-camera');
+        mensagemCamera.textContent = negado
+          ? 'Não foi possível usar a câmera: permita o acesso à câmera no navegador ou use "Escolher uma foto".'
+          : 'Não encontramos uma câmera neste aparelho. Use "Escolher uma foto".';
+      });
+    });
+
+    btnCapturar.addEventListener('click', function () {
+      if (!streamWebcam) return;
+      btnCapturar.disabled = true;
+      const contagem = document.getElementById('webcam-contagem');
+      let n = 3;
+      contagem.textContent = n;
+      const timer = setInterval(function () {
+        n -= 1;
+        if (n > 0) { contagem.textContent = n; return; }
+        clearInterval(timer);
+        contagem.textContent = '';
+        capturarQuadro();
+      }, 800);
+    });
+
+    function capturarQuadro() {
+      const w = videoWebcam.videoWidth, h = videoWebcam.videoHeight;
+      if (!w || !h) { usarSeletorDeArquivo('A câmera não respondeu. Escolha uma foto.'); return; }
+      const flash = document.getElementById('webcam-flash');
+      flash.classList.add('ativo');
+      setTimeout(function () { flash.classList.remove('ativo'); }, 60);
+      const tela = document.createElement('canvas');
+      tela.width = w; tela.height = h;
+      const c = tela.getContext('2d');
+      // Salva espelhado, igual ao que o aluno viu na pré-visualização.
+      c.translate(w, 0); c.scale(-1, 1);
+      c.drawImage(videoWebcam, 0, 0, w, h);
+      pararWebcam();
+      mostrarTela('tela-processando-foto');
+      const imgFoto = new Image();
+      imgFoto.onload = function () { concluirFoto(imgFoto); };
+      imgFoto.onerror = function () { usarSeletorDeArquivo('Não foi possível usar a foto. Escolha uma imagem.'); };
+      imgFoto.src = tela.toDataURL('image/jpeg', 0.92);
+    }
+
+    document.getElementById('btn-cancelar-webcam').addEventListener('click', function () {
+      pararWebcam();
+      mostrarTela('tela-camera');
+    });
+    // Desliga a câmera se o aluno sair da página ou trocar de aba.
+    window.addEventListener('pagehide', pararWebcam);
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden && streamWebcam) { pararWebcam(); mostrarTela('tela-camera'); }
+    });
+    document.getElementById('input-galeria').addEventListener('change', receberFoto);
+    if (new URLSearchParams(location.search).get('origem') === 'app') {
+      document.getElementById('navegacao-card').hidden = false;
+    }
+    // "Voltar ao resultado": o resultado vem no próprio link (parâmetro r),
+    // nada é guardado no navegador. Sem ele, o botão some.
+    (function () {
+      const r = new URLSearchParams(location.search).get('r');
+      const btnVoltar = document.getElementById('btn-voltar-resultado');
+      if (r) { btnVoltar.href = './index.html#resultado=' + encodeURIComponent(r); }
+      else { btnVoltar.hidden = true; btnVoltar.style.display = 'none'; }
+    })();
+
+    document.getElementById('btn-outra-foto').addEventListener('click', function () {
+      document.getElementById('input-foto').value = '';
+      document.getElementById('input-galeria').value = '';
+      mensagemCamera.textContent = '';
+      mostrarTela('tela-camera');
+    });
+
+    document.getElementById('btn-baixar').addEventListener('click', function () {
+      const dataUrl = document.getElementById('img-card-final').src;
+      const link = document.createElement('a');
+      link.href = dataUrl;
+      link.download = 'meu-card-crie-sua-empresa.png';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    });
+
+    function prepararCompartilhamento(dataUrl) {
+      const btnCompartilhar = document.getElementById('btn-compartilhar');
+      btnCompartilhar.style.display = 'none';
+      if (!navigator.share || !navigator.canShare) return;
+
+      fetch(dataUrl).then(function (resp) { return resp.blob(); }).then(function (blob) {
+        const arquivo = new File([blob], 'meu-card-crie-sua-empresa.png', { type: 'image/png' });
+        if (!navigator.canShare({ files: [arquivo] })) return;
+
+        btnCompartilhar.style.display = 'inline-block';
+        btnCompartilhar.onclick = function () {
+          navigator.share({
+            files: [arquivo],
+            title: 'Meu card — Crie sua Empresa em 1 Minuto',
+            text: 'Eu participei do Crie sua Empresa em 1 Minuto do ISECENSA! 🎓'
+          }).catch(function () { /* usuário cancelou o compartilhamento, tudo bem */ });
+        };
+      }).catch(function (erro) {
+        console.error('Falha ao preparar compartilhamento:', erro);
+      });
+    }
+  </script>
+</body>
+</html>
