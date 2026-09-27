@@ -633,6 +633,9 @@ async function render(){
   if(!user){document.body.classList.add("deslogado");return telaBloqueada();}
   document.body.classList.remove("deslogado");
   if(aba==="perfil")return telaPerfil();
+  // V126: conta sem cadastro básico vai para o passo a passo "Primeiros passos"
+  const pend=await pendenciasIniciais();
+  if(pend)return telaPrimeirosPassos(pend);
   if(aba==="financeiro")return menuFinanceiro();
   return ({inicio:telaInicio,painel:telaPainel,lotes:telaLotes,animais:telaAnimais}[aba]||telaInicio)();
 }
@@ -666,6 +669,111 @@ async function telaBloqueada(){
   </div>`;
 }
 function voltar(){renderSeguro();}
+
+/* ======================= V126: PRIMEIROS PASSOS =======================
+   Conta sem nenhum animal e sem o cadastro básico é levada, na ordem, a cadastrar:
+   1) propriedade  2) marca / dono  3) lote  4) pasto.
+   Antes de decidir, se este aparelho nunca sincronizou, busca os dados da nuvem
+   (quem já usa o app em outro aparelho não precisa refazer nada). */
+let _onbSyncTentado=false;
+async function pendenciasIniciais(){
+  if(!_onbSyncTentado){
+    _onbSyncTentado=true;
+    try{
+      const m=await garantirSyncMeta();
+      if(!m.last_sync_at&&navigator.onLine&&authSession()){
+        $t.innerHTML=`<div class="vazio" style="padding-top:60px"><div class="big">☁️</div><b>Carregando seus dados…</b><div class="meta">Buscando o que já está salvo na sua conta.</div></div>`;
+        await sincronizarAgora({silencioso:true});
+      }
+    }catch(e){}
+  }
+  const [props,marcas,lotes,pastos,animais]=await Promise.all(["propriedades","marcas","lotes","pastos","animais"].map(getAll));
+  if(animais.length)return null; // quem já tem animais não é bloqueado
+  const passos=[
+    {k:"propriedade",ok:props.length>0,titulo:"Propriedade",ic:"🏡"},
+    {k:"marca",ok:marcas.length>0,titulo:"Marca / dono",ic:"🏷"},
+    {k:"lote",ok:lotes.length>0,titulo:"Lote",ic:"▤"},
+    {k:"pasto",ok:pastos.length>0,titulo:"Pasto",ic:"🌱"}
+  ];
+  if(passos.every(p=>p.ok))return null;
+  return {passos,props,marcas,lotes,pastos};
+}
+async function exigirCadastroInicial(){
+  const pend=await pendenciasIniciais();
+  if(pend){aba="inicio";marcarNav("inicio");telaPrimeirosPassos(pend);return true;}
+  return false;
+}
+async function telaPrimeirosPassos(pend){
+  pend=pend||await pendenciasIniciais();
+  if(!pend)return renderSeguro();
+  topoPagina();
+  const {passos,props,lotes}=pend;
+  const atual=passos.find(p=>!p.ok),n=passos.indexOf(atual)+1;
+  const lista=passos.map((p,i)=>`<div class="row" style="padding:9px 0;${i?"border-top:1px solid var(--linha)":""}">
+      <div style="font-weight:${p===atual?800:600};color:${p.ok?"var(--verde)":p===atual?"var(--texto)":"var(--muted)"}">${p.ic} ${i+1}. ${p.titulo}</div>
+      <div class="meta" style="font-weight:700;color:${p.ok?"var(--verde)":"var(--muted)"}">${p.ok?"✓ feito":p===atual?"agora":"depois"}</div></div>`).join("");
+  const optProp=props.map(p=>`<option value="${p.id}">${esc(p.nome)}</option>`).join("");
+  const optLote=lotes.map(l=>`<option value="${l.id}">${esc(l.nome)}</option>`).join("");
+  let form="";
+  if(atual.k==="propriedade")form=`
+    <div class="meta">Onde o rebanho fica. Você pode cadastrar outras depois.</div>
+    <label>Nome da propriedade *</label><input id="onb_nome" placeholder="Ex: Sítio Árvore">
+    <label>Localização</label><input id="onb_local" placeholder="Ex: Campos dos Goytacazes - RJ">`;
+  else if(atual.k==="marca")form=`
+    <div class="meta">Identifica o dono dos animais (a marca a ferro). Todo animal precisa de uma.</div>
+    <label>Sigla da marca *</label><input id="onb_sigla" placeholder="Ex: SJ">
+    <label>Nome do dono</label><input id="onb_dono" placeholder="Ex: Saulo Jardim">`;
+  else if(atual.k==="lote")form=`
+    <div class="meta">Grupo de animais manejados juntos. Todo animal fica em um lote.</div>
+    ${props.length>1?`<label>Propriedade *</label><select id="onb_prop">${optProp}</select>`:`<input type="hidden" id="onb_prop" value="${props[0].id}">`}
+    <label>Nome do lote *</label><input id="onb_nome" placeholder="Ex: Engorda 2026">
+    <label>Descrição</label><input id="onb_desc" placeholder="Ex: garrotes comprados em setembro">`;
+  else form=`
+    <div class="meta">A área onde o lote está. Depois dá para cadastrar os outros pastos em Gestão de Pastos.</div>
+    ${props.length>1?`<label>Propriedade *</label><select id="onb_prop">${optProp}</select>`:`<input type="hidden" id="onb_prop" value="${props[0].id}">`}
+    <label>Nome do pasto *</label><input id="onb_nome" placeholder="Ex: Pasto da Frente">
+    <div class="lado"><div><label>Área (ha)</label><input id="onb_area" inputmode="decimal" placeholder="Ex: 12"></div>
+      <div><label>Capim</label><input id="onb_capim" placeholder="Ex: Braquiária"></div></div>
+    <label>Situação</label><select id="onb_status">
+      ${lotes.length?`<option value="Ocupado">Ocupado pelo lote</option>`:""}<option value="Livre">Livre</option><option value="Descanso">Em descanso</option></select>
+    ${lotes.length>1?`<label>Lote no pasto</label><select id="onb_lote">${optLote}</select>`:(lotes.length?`<input type="hidden" id="onb_lote" value="${lotes[0].id}">`:"")}`;
+  $t.innerHTML=`<div class="sechead" style="margin-top:6px"><span class="sic">🚀</span><h2>Primeiros passos</h2></div>
+    <div class="meta" style="margin:-6px 4px 14px">Antes de cadastrar animais, o app precisa destes 4 cadastros básicos. Leva menos de 2 minutos.</div>
+    <div class="card" style="cursor:default">${lista}</div>
+    <div class="card" style="cursor:default;border-left:4px solid var(--verde)">
+      <div class="meta" style="font-weight:700;color:var(--verde)">Passo ${n} de 4</div>
+      <div class="ti" style="font-size:19px;margin-bottom:4px">${atual.ic} ${atual.titulo}</div>
+      ${form}
+      <button class="btn" style="margin:18px 0 0" onclick="salvarPassoInicial('${atual.k}')">Salvar e continuar</button>
+    </div>
+    <div class="meta" style="margin:6px 4px">Já usa o app em outro aparelho? Entre com a mesma conta e toque em Perfil → Sincronizar agora, ou restaure um backup.</div>`;
+}
+async function salvarPassoInicial(k){
+  const nome=((document.getElementById("onb_nome")||{}).value||"").trim().replace(/\s+/g," ");
+  if(k==="propriedade"){
+    if(!nome)return alert("Informe o nome da propriedade.");
+    await put("propriedades",{id:uid(),nome,local:val("onb_local"),criadoEm:Date.now()});
+  }else if(k==="marca"){
+    const sigla=val("onb_sigla");if(!sigla)return alert("Informe a sigla da marca.");
+    await put("marcas",{id:uid(),sigla,nome:val("onb_dono")});
+  }else if(k==="lote"){
+    if(!nome)return alert("Dê um nome ao lote.");
+    const dup=await loteComMesmoNome(nome);if(dup)return alert(`Já existe um lote chamado "${dup.nome}".`);
+    await put("lotes",{id:uid(),nome,descricao:val("onb_desc"),propriedadeId:val("onb_prop"),criadoEm:Date.now()});
+  }else if(k==="pasto"){
+    if(!nome)return alert("Dê um nome ao pasto.");
+    const status=val("onb_status")||"Livre";
+    await put("pastos",{id:uid(),propriedadeId:val("onb_prop"),nome,areaHa:numBR("onb_area"),tipoCapim:val("onb_capim"),
+      status,loteId:status==="Ocupado"?(val("onb_lote")||null):null,criadoEm:Date.now(),statusDesde:Date.now(),historico:[]});
+  }
+  const pend=await pendenciasIniciais();
+  if(pend)return telaPrimeirosPassos(pend);
+  // concluído
+  $t.innerHTML=`<div class="vazio" style="padding-top:40px"><div class="big">✅</div><b style="font-size:20px">Tudo pronto!</b>
+      <div class="meta" style="margin:8px 0 22px">Propriedade, marca, lote e pasto cadastrados. Agora você já pode cadastrar os animais.</div></div>
+    <button class="btn" onclick="abrirAnimaisOperacional();formNovoAnimal()">🐄 Cadastrar o primeiro animal</button>
+    <button class="btn btn-sec" onclick="irAba('inicio')">Ir para o início</button>`;
+}
 
 /* ======================= INÍCIO ======================= */
 function homeMoney(v){
@@ -779,17 +887,20 @@ async function telaInicio(){
 function marcarNav(a){
   document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("ativo",x.dataset.aba===a));
 }
-function abrirOperacional(){
+async function abrirOperacional(){
+  if(await exigirCadastroInicial())return;
   aba="painel";
   marcarNav("painel");
   telaPainel();
 }
-function abrirLotesOperacional(){
+async function abrirLotesOperacional(){
+  if(await exigirCadastroInicial())return;
   aba="painel";
   marcarNav("painel");
   telaLotes();
 }
-function abrirAnimaisOperacional(){
+async function abrirAnimaisOperacional(){
+  if(await exigirCadastroInicial())return;
   aba="painel";
   marcarNav("painel");
   telaAnimais();
@@ -2402,6 +2513,7 @@ async function menuConfig(){
 
 async function menuFinanceiro(){
   if(!(await podeUsarApp("Acessar gestão financeira")))return;
+  if(await exigirCadastroInicial()){fechar();return;}
   fechar();
   aba="financeiro";
   marcarNav("financeiro");
