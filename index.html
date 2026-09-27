@@ -2735,7 +2735,7 @@ async function finRelatorios(){
   lancs.forEach(l=>eventos.push({data:l.data,desc:l.descricao||l.categoria,partidas:partidasDe(l)}));
   // Nascimentos do período: D Estoque de Semoventes / C Ganho a realizar
   animais.filter(a=>a.nascidoNaPropriedade===true&&(a.dataNascimento||"").slice(0,4)===_finAno&&(a.custoEstoque||0)>0&&(!_finProp||propDoAnimal(a)===_finProp))
-    .forEach(a=>eventos.push({data:a.dataNascimento,desc:`Nascimento ${rotulo(a)} ${codAnimal(a)}`,
+    .forEach(a=>eventos.push({data:a.dataNascimento,desc:`Nascimento ${rotuloCod(a)}`,
       partidas:[["Estoque de semoventes","Ganho a realizar – semoventes",a.custoEstoque||0]]}));
   // Compras de insumo do período (entradas): D Estoque de insumos / C Banco ou Fornecedores
   if(!_finProp){
@@ -3359,7 +3359,7 @@ async function salvarSaida(animalId){
     await put("lancamentos",{id:uid(),tipo:"receita",categoria:"Venda de animais",valor:saida.valor,
       custo:a.custoEstoque||0, formaRecebimento:forma,
       ganhoRealizado: a.nascidoNaPropriedade===true ? (a.custoEstoque||0) : 0,
-      data,descricao:`Venda ${rotulo(a)} ${codAnimal(a)}`,propriedadeId:lote?lote.propriedadeId:null,
+      data,descricao:`Venda ${rotuloCod(a)}`,propriedadeId:lote?lote.propriedadeId:null,
       pago:forma==="vista",origem:"venda_animal",refId:id,modeloCusto:"v120",criadoEm:Date.now()});
   }
   fechar(); irAba('animais');
@@ -3490,7 +3490,7 @@ async function telaManejo(){
   if(!(await podeUsarApp("Acessar manejo")))return;
   topoPagina();
   const {animais,eventos,medicamentos}=await tudo();
-  const nomeAnimal=id=>{const a=animais.find(x=>x.id===id);return a?`${rotulo(a)} ${codAnimal(a)}`:"Animal não encontrado";};
+  const nomeAnimal=id=>{const a=animais.find(x=>x.id===id);return a?rotuloCod(a):"Animal não encontrado";};
   const nomeMed=id=>{const m=medicamentos.find(x=>x.id===id);return m?m.nome:"Medicamento não informado";};
   const gruposManejo=(tipo)=>{
     const evs=eventos.filter(e=>e.tipo===tipo).sort((a,b)=>(b.data||"").localeCompare(a.data||"")||(b.hora||"").localeCompare(a.hora||"")||(b.criadoEm||0)-(a.criadoEm||0));
@@ -3565,7 +3565,7 @@ async function telaMedicamentosManejo(){
     <button class="btn-fant" style="padding:4px 8px;color:var(--verde)" onclick="formEditarMedicamento('${m.id}')">✎</button>
     <button class="btn-fant" style="padding:4px 8px;color:var(--perigo)" onclick="excluirMedicamentoPagina('${m.id}')">✕</button></div>`).join("") || `<div class="meta">Nenhum medicamento cadastrado ainda.</div>`;
   const aplicacoes=eventos.filter(e=>e.tipo==="Medicamento").sort((a,b)=>(b.data||"").localeCompare(a.data||"")||(b.hora||"").localeCompare(a.hora||"")).slice(0,8);
-  const nomeAnimal=id=>{const a=animais.find(x=>x.id===id);return a?`${rotulo(a)} ${codAnimal(a)}`:"Animal não encontrado";};
+  const nomeAnimal=id=>{const a=animais.find(x=>x.id===id);return a?rotuloCod(a):"Animal não encontrado";};
   const nomeMed=id=>(medicamentos.find(m=>m.id===id)||{}).nome||"Medicamento não informado";
   const hist=aplicacoes.map(e=>`<div class="manejo-reg"><div class="mr-top"><div class="mr-title">${esc(nomeMed(e.medicamentoId))}</div><div class="mr-date">${fmt(e.data)}${e.hora?` · ${esc(e.hora)}`:""}</div></div><div class="mr-meta">${esc(nomeAnimal(e.animalId))}${e.via?` · ${esc(e.via)}`:""}${e.dose?` · ${esc(e.dose)}`:""}${e.detalhes?`<br>${esc(e.detalhes)}`:""}</div></div>`).join("");
 
@@ -3764,7 +3764,7 @@ async function formManejo(tipo){
   const ativosIds=new Set(ativos.map(a=>a.id));
   const qtdGrupo=gid=>new Set(grupo_animais.filter(v=>v.grupoId===gid&&ativosIds.has(v.animalId)).map(v=>v.animalId)).size;
   const optGrupos=(grupos||[]).map(g=>`<option value="${g.id}">${esc(g.nome)} — ${qtdGrupo(g.id)} animal(is)</option>`).join("");
-  const checksAnimais=ativos.map(a=>`<label class="mj-multi-item" data-busca="${esc((rotulo(a)+" "+codAnimal(a)+" "+nomeLote(a.loteAtualId)).toLowerCase())}" style="display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--linha);padding:10px 2px;margin:0;color:var(--texto)">
+  const checksAnimais=ativos.map(a=>`<label class="mj-multi-item" data-busca="${esc((rotuloCod(a)+" "+(a.brinco||"")+" "+nomeLote(a.loteAtualId)).toLowerCase())}" style="display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--linha);padding:10px 2px;margin:0;color:var(--texto)">
       <input type="checkbox" class="mj_multi_ck" value="${a.id}" onchange="atualizarContagemManejo()" style="width:20px;height:20px;flex:0 0 auto">
       <span style="min-width:0"><b>${esc(rotuloCod(a))}</b><span class="meta" style="display:block">▦ ${esc(nomeLote(a.loteAtualId))}</span></span>
     </label>`).join("");
