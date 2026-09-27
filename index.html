@@ -983,7 +983,6 @@ async function telaPainel(){
     <div class="submod">🐄 Rebanho</div>
     <div class="grid">
       ${mod('<img src="boi.png" alt="">',"Animais","Cadastro, nascimentos, desmama, consulta e histórico.","abrirAnimaisOperacional()")}
-      ${mod("⚖️","Engorda e pesagens","Pesagens, peso estimado, @ produzidas e custo da @.","telaEngorda()")}
       ${mod("↩️","Venda / Morte de Animal","Venda individual, múltipla, por lote ou grupo e registro de morte.","telaVendaMorteAnimal()")}
     </div>
     <div class="submod">🌱 Manejo & Áreas</div>
@@ -1041,7 +1040,7 @@ const dataParaTs=s=>{if(!s)return null;const[a,m,d]=s.split("-").map(Number);ret
 const DIAS_DESMAMA=210;
 // V120 — modelo de custo: o bezerro nascido entra no estoque com custo ZERO, porque o custo de
 // criá-lo (sal, vacina, mão de obra da vaca) já foi lançado como despesa. Não existe mais
-// "ganho a realizar". O valor de mercado com a engorda fica no painel gerencial (engorda-v120.js).
+// "ganho a realizar". (O painel de engorda/valor de mercado está desativado desde a V129 — ver desativados/.)
 const CUSTO_BEZERRO=0;
 function desmamaInfo(a){
   if(a.desmamado)return {desmamado:true,dataDesmama:a.dataDesmama||""};
@@ -2940,7 +2939,7 @@ async function finConfig(){
     <div class="card"><b>Como as contas funcionam</b>
       <div class="meta" style="margin-top:8px;line-height:1.55">• Regime de <b>competência</b>: cada valor entra na data do fato, não na data do pagamento.<br>
       • <b>Compra de animal</b> não é despesa — vira <b>estoque</b> (ativo) pelo preço de compra.<br>
-      • <b>Modelo de custo</b>: o rebanho fica registrado pelo que custou; o lucro aparece na venda. A engorda e o valor de mercado estimado ficam no painel <b>Engorda e pesagens</b> (gerencial, fora da contabilidade).<br>
+      • <b>Modelo de custo</b>: o rebanho fica registrado pelo que custou; o lucro aparece na venda.<br>
       • <b>Bezerro nascido</b> na propriedade entra no estoque com custo <b>zero</b>: o custo de produzi-lo já está nas despesas do período.<br>
       • <b>Venda</b>: <b>D</b> Banco/Clientes · <b>C</b> Receita e <b>D</b> CPV · <b>C</b> Estoque (custo de compra dos animais vendidos; zero para os nascidos).<br>
       • <b>Morte</b> de animal comprado: baixa o estoque como <b>perda</b> (<b>D</b> Perda com morte de animais · <b>C</b> Estoque), despesa sem saída de caixa.<br>
@@ -2948,8 +2947,7 @@ async function finConfig(){
       • <b>À vista</b> entra no caixa na data do fato; <b>a prazo</b> fica em Clientes (a receber) ou Fornecedores (a pagar).<br>
       • <b>Pagamento e recebimento</b> são eventos próprios, com data e valor (aceita parcelas): <b>D</b> Banco · <b>C</b> Clientes ou <b>D</b> Fornecedores · <b>C</b> Banco. O lançamento original não é reescrito.<br>
       • <b>Compra de animal</b> gera o lançamento "Compra de animais" (não é despesa): à vista já sai paga; a prazo entra em "A pagar".<br>
-      • <b>Valor do rebanho</b> (contábil) = soma do custo de estoque dos animais ativos. O valor estimado a mercado está no painel de engorda.</div></div>
-    <div class="card"><b>Custo da @ produzida</b><div class="meta" style="margin-top:6px">No painel Engorda e pesagens: despesas do ano ÷ arrobas produzidas (peso vivo ÷ 30), comparado com o preço médio da @ vendida.</div></div>
+      • <b>Valor do rebanho</b> (contábil) = soma do custo de estoque dos animais ativos.</div></div>
     <div class="meta" style="padding:0 4px;margin-top:8px;line-height:1.5">Não sou contador — para fins de imposto (Livro Caixa do Produtor Rural, que é regime de caixa) confirme com um contador rural.</div>`;
 }
 

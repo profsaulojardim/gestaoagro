@@ -24,3 +24,8 @@ Dados: IndexedDB local + sincronização Supabase (tabela `sync_records`; novos 
   lançamentos deve filtrá-los.
 - Não criar store nova no IndexedDB para sincronizar (o Supabase tem CHECK de `store_name`).
 - Datas de fatos (compra, nascimento, pagamento, desmama) não podem ser no futuro.
+
+## Recursos desativados
+- O módulo **Engorda e pesagens** foi desativado a pedido do dono na V129 (quer o app mais simples).
+  O código está em `desativados/` (com LEIA-ME de como reativar) e no ramo `guardado-engorda-v128`.
+  Não reativar nem sugerir de novo sem o dono pedir.
