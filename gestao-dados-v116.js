@@ -14,10 +14,11 @@
   async function decorarHistorico(){
     const area=document.getElementById('hc-resultados')||$t;
     if(!area)return;
-    const pcs=await partidasFiltradas();
-    const cards=[...area.querySelectorAll('.card')].filter(c=>!c.dataset.pcV116);
-    cards.forEach((card,i)=>{
-      const pc=pcs[i];if(!pc)return;
+    // V127: o botão usa o id gravado no próprio cartão (antes casava por posição com a lista do
+    // ano atual, e na tela de outro ano só o 1º cartão ganhava botão — apontando para a operação errada)
+    const cards=[...area.querySelectorAll('.card[data-pc-id]')].filter(c=>!c.dataset.pcV116&&c.dataset.pcEstorno!=='1');
+    cards.forEach(card=>{
+      const pc={id:card.dataset.pcId};
       card.dataset.pcV116=pc.id;
       const a=document.createElement('div');
       a.style.cssText='display:flex;gap:8px;margin-top:10px;padding-top:9px;border-top:1px solid var(--linha)';
@@ -53,7 +54,7 @@
     const a=await get('animais',id);if(!a)return alert('Animal não encontrado.');
     if(a.nascidoNaPropriedade===true)return formEditarAnimal(id);
     abrir(`<h2>Editar compra do animal</h2>
-      <div class="meta" style="margin-bottom:12px">${esc(rotulo(a))} ${codAnimal(a)} · a alteração atualiza o custo de estoque e a partida contábil vinculada.</div>
+      <div class="meta" style="margin-bottom:12px">${esc(rotuloCod(a))} · a alteração atualiza o custo de estoque e a partida contábil vinculada.</div>
       <label>Data da compra</label><input id="v116_ca_data" type="date" value="${a.dataCompra||hoje()}">
       <label>Peso bruto (kg vivo)</label><input id="v116_ca_pb" inputmode="decimal" value="${valorInput(a.pesoBrutoCompraKg||a.pesoCompraKg)}">
       <div class="lado"><div><label>Desconto por arroba (kg)</label><input id="v116_ca_desc" inputmode="decimal" value="${valorInput(a.descontoArrobaCompraKg||0)}"></div><div><label>Tara (kg)</label><input id="v116_ca_tara" inputmode="decimal" value="${valorInput(a.taraCompraKg||0)}"></div></div>

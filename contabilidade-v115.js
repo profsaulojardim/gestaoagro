@@ -29,7 +29,7 @@
     return hoje();
   };
   const formaCompra=a=>a&&a.formaPagamentoCompra==='prazo'?'Fornecedores — a pagar':'Banco/Caixa';
-  const nomeAnimal=a=>`${rotulo(a)} ${codAnimal(a)}`.trim();
+  const nomeAnimal=a=>(typeof rotuloCod==='function'?rotuloCod(a):`${rotulo(a)} ${codAnimal(a)}`).trim(); // V127
   const propAnimal=(a,lotes)=>{const l=lotes.find(x=>x.id===a.loteAtualId);return l?l.propriedadeId:null;};
   const chaveSegura=s=>String(s==null?'':s).replace(/[^a-zA-Z0-9_-]/g,'_').slice(0,120);
   const idPartida=(store,refId,chave)=>`pc_${chaveSegura(store)}_${chaveSegura(refId)}_${chaveSegura(chave)}`;
@@ -382,7 +382,7 @@
     const optAno=anos.map(a=>`<option value="${a}" ${a===_finAno?'selected':''}>${a}</option>`).join('');
     const optProp=`<option value="">Todas as propriedades</option>`+propriedades.map(p=>`<option value="${p.id}" ${p.id===_finProp?'selected':''}>${esc(p.nome)}</option>`).join('');
     const selo=x=>x.estornoDe?`<span class="chip chip-off" style="margin-left:6px">↩ Estorno</span>`:(x.estornado?`<span class="chip chip-off" style="margin-left:6px">Estornada${x.estornadoEm?` em ${fmt(x.estornadoEm)}`:''}</span>`:'');
-    const cards=filtrados.map(x=>`<div class="card" style="cursor:default${x.estornado?';opacity:.6':''}">
+    const cards=filtrados.map(x=>`<div class="card" data-pc-id="${esc(x.id)}" data-pc-estorno="${x.estornoDe?1:0}" style="cursor:default${x.estornado?';opacity:.6':''}">
       <div class="row"><div><div class="ti" style="font-size:15px">${esc(x.descricao||'Partida contábil')}${selo(x)}</div><div class="meta">📅 ${fmt(x.data)}${x.propriedadeId?` · ${esc(nomeProp(x.propriedadeId))}`:''}</div></div><div style="font-weight:800;white-space:nowrap">${moeda(x.valor)}</div></div>
       <div style="margin-top:9px;padding-top:9px;border-top:1px solid var(--linha);font-size:13px;line-height:1.55">
         <div><b style="color:var(--verde)">D</b> ${esc(x.debito||'—')}</div>
