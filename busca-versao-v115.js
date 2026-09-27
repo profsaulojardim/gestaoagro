@@ -1,6 +1,6 @@
-/* V115 — busca/filtros no Livro Diário + identificação da versão na página inicial. */
+/* V116 — busca/filtros no Livro Diário + identificação da versão na página inicial. */
 (()=>{
-  const APP_VERSAO='115';
+  const APP_VERSAO='116';
   let busca='';
   let tipo='todos';
 
@@ -63,7 +63,7 @@
         const area=document.createElement('div');area.id='hc-resultados';let n=box.nextElementSibling;
         while(n){const prox=n.nextElementSibling;area.appendChild(n);n=prox;}box.insertAdjacentElement('afterend',area);aplicarFiltros();
       }
-    }catch(e){console.error('Busca histórico contábil V115:',e);}return r;
+    }catch(e){console.error('Busca histórico contábil V116:',e);}return r;
   };
 
   function inserirVersao(){
@@ -71,10 +71,9 @@
       if(!$t||!$t.querySelector('.home-greet')||document.getElementById('app-versao'))return;
       const v=document.createElement('div');v.id='app-versao';v.textContent=`Versão ${APP_VERSAO}`;
       v.style.cssText='text-align:center;color:var(--muted);font-size:12px;margin:22px 0 8px;opacity:.8;';$t.appendChild(v);
-    }catch(e){console.error('Versão V115:',e);}
+    }catch(e){console.error('Versão V116:',e);}
   }
   const inicio0=window.telaInicio;
   if(typeof inicio0==='function')window.telaInicio=async function(){const r=await inicio0.apply(this,arguments);inserirVersao();return r;};
-  setTimeout(inserirVersao,300);
-  setTimeout(inserirVersao,1000);
+  setTimeout(inserirVersao,300);setTimeout(inserirVersao,1000);
 })();
