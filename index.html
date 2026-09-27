@@ -1536,6 +1536,7 @@ async function telaAnimais(){
         <option value="pasto">Pasto</option>
         <option value="lote">Lote</option>
         <option value="sexo">Sexo</option>
+        <option value="raca">Raça</option>
         <option value="status">Situação do animal</option>
       </select>
       <select id="f_criterio" onchange="filtrarAnimais()" disabled>
@@ -1571,6 +1572,8 @@ function atualizarCriterioFiltroAnimais(){
     opts=lotes.map(l=>[l.id,l.nome||"Lote"]);opts.push(["__sem","Sem lote"]);
   }else if(tipo==="sexo"){
     opts=[["F","Fêmea"],["M","Macho"]];
+  }else if(tipo==="raca"){
+    opts=[["Nelore","Nelore"],["Mestiço","Mestiço"],["__sem","Raça não informada"]];
   }else if(tipo==="status"){
     opts=[["Ativo","Ativo"],["Vendido","Vendido"],["Morto","Morto"]];
   }
@@ -1618,6 +1621,7 @@ function filtrarAnimais(){
     }
     if(tipo==="lote")return criterio==="__sem"?!a.loteAtualId:a.loteAtualId===criterio;
     if(tipo==="sexo")return a.sexo===criterio;
+    if(tipo==="raca")return criterio==="__sem"?!a.raca:a.raca===criterio;
     if(tipo==="status")return a.status===criterio;
     return true;
   });
@@ -1702,6 +1706,7 @@ async function verAnimal(id){
       <div class="meta" style="margin-top:8px">
         ${a.nascidoNaPropriedade?`Origem: nascido na propriedade<br>`:(a.nascidoNaPropriedade===false?`Origem: comprado em ${dataAquisicao(a)?fmt(dataAquisicao(a)):"—"}${a.pesoCompraKg?` — ${a.pesoCompraKg} kg vivo`:""}<br>`:"")}
         ${a.custoEstoque?`Custo de estoque: ${moeda(a.custoEstoque)}<br>`:""}
+        ${a.raca?`Raça: ${esc(a.raca)}<br>`:`Raça: não informada<br>`}
         ${a.dataNascimento?`Nascimento: ${fmt(a.dataNascimento)}<br>`:""}
         ${mae?`Mãe: <b onclick="verAnimal('${mae.id}')" style="color:var(--verde);cursor:pointer">${esc(nomeMae(mae))}</b><br>`:(a.nascidoNaPropriedade===true?`Mãe: não informada<br>`:"")}
         ${filhos.length?`Filhos: ${filhos.length}`:""}</div>
@@ -3229,6 +3234,7 @@ async function formNovoAnimal(loteFixo,nascimento){
     <label>Brinco / identificação (único)</label><input id="a_brinco" placeholder="Opcional">
     <label>Nome (opcional)</label><input id="a_nome">
     <label>Sexo *</label><select id="a_sexo"><option value="F">Fêmea</option><option value="M">Macho</option></select>
+    <label>Raça *</label><select id="a_raca"><option value="">— selecione —</option><option value="Nelore">Nelore</option><option value="Mestiço">Mestiço</option></select>
     ${toggle}
     <div id="grp_nasc" style="display:${nascimento?"block":"none"}">
       <label>Data de nascimento</label><input id="a_nasc" type="date" value="${hoje()}">
@@ -3253,10 +3259,11 @@ async function salvarAnimal(nascimento){
   const marcaId = val("a_marca")||null;
   const brinco = val("a_brinco");
   if(!marcaId)return alert("Selecione a marca / dono do animal.");
+  if(!val("a_raca"))return alert("Selecione a raça do animal.");
   if(nasceu&&val("a_nasc")>hoje())return alert("A data de nascimento não pode ser no futuro.");
   if(brinco && await brincoEmUso(brinco))return alert(`Já existe um animal com o brinco / identificação "${brinco}". Cada animal deve ter uma identificação única.`);
   const a={id:uid(),codigo:await proximoCodigo(),
-    brinco,nome:val("a_nome"),sexo:val("a_sexo"),
+    brinco,nome:val("a_nome"),sexo:val("a_sexo"),raca:val("a_raca"),
     nascidoNaPropriedade:!!nasceu,
     dataNascimento: nasceu ? val("a_nasc") : "",
     pesoCompraKg: nasceu ? null : numBR("a_pesocompra"),
@@ -3378,6 +3385,8 @@ async function formEditarAnimal(id){
     <label>Sexo *</label><select id="e_sexo">
       <option value="F" ${a.sexo==="F"?"selected":""}>Fêmea</option>
       <option value="M" ${a.sexo==="M"?"selected":""}>Macho</option></select>
+    <label>Raça</label><select id="e_raca"><option value="">— não informada —</option>
+      <option value="Nelore" ${a.raca==="Nelore"?"selected":""}>Nelore</option><option value="Mestiço" ${a.raca==="Mestiço"?"selected":""}>Mestiço</option></select>
     <label>Nasceu na propriedade?</label>
     <select id="e_nasceu" onchange="toggleOrigemEdit()">
       <option value="sim" ${nasceu?"selected":""}>Sim — nasceu aqui</option>
@@ -3408,6 +3417,7 @@ async function salvarEdicaoAnimal(id){
   a.brinco=brinco;
   a.nome=val("e_nome");
   a.sexo=val("e_sexo");
+  a.raca=val("e_raca");
   a.nascidoNaPropriedade=nasceu;
   a.dataNascimento = nasceu ? val("e_nasc") : "";
   a.pesoCompraKg = nasceu ? null : numBR("e_pesocompra");

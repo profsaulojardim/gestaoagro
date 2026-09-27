@@ -12,7 +12,14 @@
 (()=>{
   const DIA=86400000;
   const PADRAO={gmdAguas:0.55,gmdSeca:0.20,gmdPre:0.70,mesAguas:10,mesSeca:4,pesoNascer:32,capF:450,capM:540,
-    idadeMatrizMeses:30,calibrar:true,precoEngorda:null,precoBezerro:null,precoMatriz:null};
+    idadeMatrizMeses:30,calibrar:true,precoEngorda:null,precoBezerro:null,precoMatriz:null,
+    idadeBezerroMeses:12,pesoBezerroKg:240};
+  // V128: preço da @ por categoria de mercado
+  const CATS_PRECO=[
+    ['bezerroNelore','Bezerro Nelore'],['bezerraNelore','Bezerra Nelore'],
+    ['bezerroMestico','Bezerro Mestiço'],['bezerraMestica','Bezerra Mestiça'],
+    ['machoInteiro','Macho adulto inteiro'],['machoCastrado','Macho adulto castrado'],['femeaAdulta','Fêmea adulta']];
+  const NOME_CAT=Object.fromEntries(CATS_PRECO);
   const METODOS={balanca:'Balança',fita:'Fita de pesagem',visual:'Estimativa visual'};
   const f2=n=>Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
   const f1=n=>Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1});
@@ -25,7 +32,15 @@
     if(s.includes(',')&&s.includes('.'))s=s.replace(/\./g,'').replace(',','.');else if(s.includes(','))s=s.replace(',','.');const v=Number(s);return Number.isFinite(v)?v:null;};
 
   /* ---------------- parâmetros (guardados neste aparelho) ---------------- */
-  async function cfgEngorda(){const c=await getConfig();return Object.assign({},PADRAO,c.engorda||{});}
+  async function cfgEngorda(){
+    const c=await getConfig();const cfg=Object.assign({},PADRAO,c.engorda||{});
+    cfg.precos=Object.assign({},cfg.precos||{});
+    if(!Object.keys(cfg.precos).length&&(cfg.precoEngorda||cfg.precoBezerro||cfg.precoMatriz)){ // V128: veio da V120–V127
+      const e=Number(cfg.precoEngorda)||null,bz=Number(cfg.precoBezerro)||e,mt=Number(cfg.precoMatriz)||e;
+      Object.assign(cfg.precos,{bezerroNelore:bz,bezerraNelore:bz,bezerroMestico:bz,bezerraMestica:bz,machoInteiro:e,machoCastrado:e,femeaAdulta:mt});
+    }
+    return cfg;
+  }
   async function salvarCfgEngorda(novo){const c=await getConfig();c.id='config';c.engorda=Object.assign({},PADRAO,c.engorda||{},novo);await put('perfil',c);}
 
   /* ---------------- dados de base ---------------- */
@@ -130,6 +145,18 @@
   }
 
   /* ---------------- cálculos do painel ---------------- */
+  // V128: categoria de mercado — bezerro(a) até N meses (sem data de nascimento: abaixo de X kg); depois, adulto
+  function categoriaPreco(a,cfg,d,kg){
+    const id=idadeDias(a,d||hoje());
+    const jovem=id!=null?id<cfg.idadeBezerroMeses*30.4:(kg!=null&&kg<cfg.pesoBezerroKg);
+    if(jovem){
+      const mest=a.raca==='Mestiço';
+      return {key:a.sexo==='F'?(mest?'bezerraMestica':'bezerraNelore'):(mest?'bezerroMestico':'bezerroNelore'),semRaca:!a.raca};
+    }
+    if(a.sexo==='F')return {key:'femeaAdulta',semRaca:false};
+    return {key:a.castrado?'machoCastrado':'machoInteiro',semRaca:false};
+  }
+  const precoDaCat=(key,cfg)=>Number((cfg.precos||{})[key])||null;
   function precoCat(cat,cfg){
     const e=Number(cfg.precoEngorda)||null;
     if(cat==='bezerro')return {v:Number(cfg.precoBezerro)||e,fallback:!cfg.precoBezerro&&!!e};
@@ -149,8 +176,8 @@
       const w=pesoEm(a,base,cfg,fator,d,pts);
       if(!w){semPeso.push(a);continue;}
       const w30=pesoEm(a,base,cfg,fator,d30,pts);
-      const cat=categoria(a,base,cfg,d),pr=precoCat(cat,cfg);
-      linhas.push({a,kg:w.kg,w,cat,valor:pr.v?kgArr(w.kg)*pr.v:null,fallback:pr.fallback,ganho30:w30?w.kg-w30.kg:null});
+      const cat=categoria(a,base,cfg,d),cp=categoriaPreco(a,cfg,d,w.kg),preco=precoDaCat(cp.key,cfg);
+      linhas.push({a,kg:w.kg,w,cat,pcat:cp.key,semRaca:cp.semRaca,preco,valor:preco?kgArr(w.kg)*preco:null,ganho30:w30?w.kg-w30.kg:null});
     }
     return {linhas,semPeso};
   }
@@ -192,7 +219,7 @@
     _engAno=_engAno||String(new Date().getFullYear());
     const {linhas,semPeso}=rebanhoHoje(base,cfg,fator);
     const kgTot=linhas.reduce((s,l)=>s+l.kg,0);
-    const temPreco=!!Number(cfg.precoEngorda);
+    const temPreco=CATS_PRECO.some(([k])=>precoDaCat(k,cfg));
     const valorTot=linhas.reduce((s,l)=>s+(l.valor||0),0);
     const custoContabil=base.animais.filter(a=>a.status==='Ativo').reduce((s,a)=>s+(Number(a.custoEstoque)||0),0);
     const g30=linhas.reduce((s,l)=>s+(l.ganho30||0),0);
@@ -220,6 +247,15 @@
         <div class="meta">${arr.length} cab. · média ${f0(kg/arr.length)} kg (${f1(kgArr(kg/arr.length))} @)</div></div>
         <div style="text-align:right"><div style="font-weight:800">${f1(kgArr(kg))} @</div>${temPreco?`<div class="meta">${moeda(val)}</div>`:''}</div></div>`;}).join('');
 
+    // V128: por categoria de mercado
+    const semRacaN=linhas.filter(l=>l.semRaca).length;
+    const htmlCats=CATS_PRECO.map(([k,nome])=>{
+      const arr=linhas.filter(l=>l.pcat===k);if(!arr.length)return '';
+      const kg=arr.reduce((s,l)=>s+l.kg,0),pr=precoDaCat(k,cfg);
+      return `<div class="card row" style="cursor:default"><div><div class="ti" style="font-size:15px">${nome}</div>
+        <div class="meta">${arr.length} cab. · ${f1(kgArr(kg))} @ · ${pr?`${moeda(pr)}/@`:'<span style="color:#b8860b;font-weight:600">sem preço</span>'}</div></div>
+        <div style="font-weight:800">${pr?moeda(kgArr(kg)*pr):'—'}</div></div>`;}).join('')
+      +(semRacaN?`<div class="meta" style="margin:0 4px 8px;color:#b8860b">${semRacaN} bezerro(s) sem raça informada — contados como Nelore. Corrija em Editar dados.</div>`:'');
     // vendas: margem por animal e GMD realizado
     const htmlVendas=vendasAno.sort((x,y)=>(y.data||'').localeCompare(x.data||'')).map(v=>{
       const ids=(v.animalIds&&v.animalIds.length)?v.animalIds:(v.refId?[v.refId]:[]);
@@ -270,6 +306,7 @@
         Rebanho no fim: ${f0(pr.Wf)} kg (${pr.nFim} cab.) + vendido: ${f0(pr.vendas)} kg<br>
         − rebanho no início: ${f0(pr.Wi)} kg (${pr.nIni} cab.) − comprado: ${f0(pr.compras)} kg<br>
         = <b>${f0(pr.producaoKg||0)} kg</b> produzidos${pr.nasc?` (inclui ${pr.nasc} nascimento(s))`:''}.${pr.perdas?` Mortes levaram ${f0(pr.perdas)} kg, que ficam fora.`:''}${pr.semDados?` ${pr.semDados} animal(is) sem peso ficaram de fora.`:''}</div></div>
+      ${htmlCats?`<div class="h3">Por categoria</div>${htmlCats}`:''}
       ${htmlLotes?`<div class="h3">Por lote</div>${htmlLotes}`:''}
       ${htmlVendas?`<div class="h3">Vendas de ${_engAno} · margem por animal</div>${htmlVendas}`:''}`;
   };
@@ -282,9 +319,17 @@
     abrir(`<h2>⚙️ Parâmetros da engorda</h2>
       <div class="meta">Ficam salvos neste aparelho. Ajuste para a realidade da sua região.</div>
       <div class="h3" style="margin-left:0">Preço da arroba (R$/@)</div>
-      <label>Animais em recria/engorda *</label><input id="pe_pe" inputmode="decimal" value="${v(c.precoEngorda)}" placeholder="${sug?`Última venda: ${f2(sug)}`:'Ex: 300'}">
-      <div class="lado"><div><label>Bezerros ao pé</label><input id="pe_pb" inputmode="decimal" value="${v(c.precoBezerro)}" placeholder="igual ao de engorda"></div>
-        <div><label>Vacas / matrizes</label><input id="pe_pm" inputmode="decimal" value="${v(c.precoMatriz)}" placeholder="igual ao de engorda"></div></div>
+      <div class="meta" style="margin:-4px 0 4px">${sug?`Referência: sua última venda foi a ${moeda(sug)}/@.`:'Deixe em branco a categoria que você não tem.'}</div>
+      <div class="lado"><div><label>Bezerro Nelore</label><input id="pe_bezerroNelore" inputmode="decimal" value="${v(c.precos.bezerroNelore)}" placeholder="R$/@"></div>
+        <div><label>Bezerra Nelore</label><input id="pe_bezerraNelore" inputmode="decimal" value="${v(c.precos.bezerraNelore)}" placeholder="R$/@"></div></div>
+      <div class="lado"><div><label>Bezerro Mestiço</label><input id="pe_bezerroMestico" inputmode="decimal" value="${v(c.precos.bezerroMestico)}" placeholder="R$/@"></div>
+        <div><label>Bezerra Mestiça</label><input id="pe_bezerraMestica" inputmode="decimal" value="${v(c.precos.bezerraMestica)}" placeholder="R$/@"></div></div>
+      <div class="lado"><div><label>Macho adulto inteiro</label><input id="pe_machoInteiro" inputmode="decimal" value="${v(c.precos.machoInteiro)}" placeholder="R$/@"></div>
+        <div><label>Macho adulto castrado</label><input id="pe_machoCastrado" inputmode="decimal" value="${v(c.precos.machoCastrado)}" placeholder="R$/@"></div></div>
+      <label>Fêmea adulta</label><input id="pe_femeaAdulta" inputmode="decimal" value="${v(c.precos.femeaAdulta)}" placeholder="R$/@">
+      <div class="lado"><div><label>Bezerro(a) até (meses)</label><input id="pe_ib" inputmode="decimal" value="${v(c.idadeBezerroMeses)}"></div>
+        <div><label>Sem data de nasc.: até (kg)</label><input id="pe_pbk" inputmode="decimal" value="${v(c.pesoBezerroKg)}"></div></div>
+      <div class="meta" style="margin-top:6px">Acima dessa idade (ou peso, se o animal não tem data de nascimento) conta como adulto. A raça vem do cadastro do animal.</div>
       <div class="h3" style="margin-left:0">GMD de referência (kg/dia)</div>
       <div class="lado"><div><label>Águas</label><input id="pe_ga" inputmode="decimal" value="${v(c.gmdAguas)}"></div><div><label>Seca</label><input id="pe_gs" inputmode="decimal" value="${v(c.gmdSeca)}"></div></div>
       <div class="lado"><div><label>Águas começam em</label>${mes('pe_ma',c.mesAguas)}</div><div><label>Seca começa em</label>${mes('pe_ms',c.mesSeca)}</div></div>
@@ -298,12 +343,13 @@
   };
   window.salvarParametrosEngorda=async function(){
     const n=(id,min,max)=>{const x=numCampo(id);return x==null?null:(x<min||x>max?NaN:x);};
-    const novo={precoEngorda:n('pe_pe',1,5000),precoBezerro:n('pe_pb',1,5000),precoMatriz:n('pe_pm',1,5000),
+    const precos={};for(const [k] of CATS_PRECO){const x=n('pe_'+k,1,5000);if(Number.isNaN(x))return alert('Preço fora da faixa esperada. Confira os campos.');precos[k]=x;}
+    const novo={precos,idadeBezerroMeses:n('pe_ib',1,36),pesoBezerroKg:n('pe_pbk',50,500),
       gmdAguas:n('pe_ga',0,2),gmdSeca:n('pe_gs',-0.5,2),gmdPre:n('pe_gp',0,2),pesoNascer:n('pe_pn',10,80),
       idadeMatrizMeses:n('pe_im',12,60),capF:n('pe_cf',150,900),capM:n('pe_cm',150,1200),
       mesAguas:Number(val('pe_ma')),mesSeca:Number(val('pe_ms')),calibrar:val('pe_cal')==='1'};
     if(Object.values(novo).some(x=>Number.isNaN(x)))return alert('Algum valor está fora da faixa esperada. Confira os campos.');
-    for(const k of ['gmdAguas','gmdSeca','gmdPre','pesoNascer','idadeMatrizMeses','capF','capM'])if(novo[k]==null)delete novo[k];
+    for(const k of ['gmdAguas','gmdSeca','gmdPre','pesoNascer','idadeMatrizMeses','capF','capM','idadeBezerroMeses','pesoBezerroKg'])if(novo[k]==null)delete novo[k];
     if(novo.mesAguas===novo.mesSeca)return alert('O início das águas e da seca precisam ser meses diferentes.');
     await salvarCfgEngorda(novo);fechar();telaEngorda();
   };
@@ -376,8 +422,8 @@
       const cfg=await cfgEngorda(),base=await carregar(),fator=calibrar(base,cfg).fator;
       const d=a.status==='Ativo'?hoje():(a.saida&&a.saida.data)||hoje();
       const w=pesoEm(a,base,cfg,fator,d);
-      const cat=categoria(a,base,cfg,d),pr=precoCat(cat,cfg);
-      const nomes={bezerro:'bezerro(a) ao pé',matriz:'matriz',engorda:'recria/engorda'};
+      const cp=categoriaPreco(a,cfg,d,w?w.kg:null),pr={v:precoDaCat(cp.key,cfg)};
+      const nomes={};const cat='x';nomes[cat]=NOME_CAT[cp.key]+(cp.semRaca?' (raça não informada)':'');
       const baseTxt=w?(w.tipo==='medido'?`medido em ${fmt(w.base.d)}`:w.tipo==='interpolado'?`entre pesos de ${fmt(w.base.d)} e o seguinte`
         :`${w.base.tipo==='compra'?'peso de compra':w.base.tipo==='nasc'?'peso ao nascer (padrão)':w.base.tipo==='venda'?'peso de venda':`${METODOS[w.base.metodo]||'pesagem'}`} em ${fmt(w.base.d)}${w.diasDesde>0?` + ${w.diasDesde} dias de GMD`:''}`):'';
       const box=document.createElement('div');
