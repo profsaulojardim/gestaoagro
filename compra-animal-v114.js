@@ -25,6 +25,7 @@
     if(nascimento)return r;
     const grp=document.getElementById('grp_compra');if(!grp)return r;
     grp.innerHTML=`
+      <label>Data da compra (aquisição) *</label><input id="ac_data_compra" type="date" value="${hoje()}">
       <label>Peso bruto (kg vivo) *</label><input id="a_pesocompra" inputmode="decimal" placeholder="Ex: 470">
       <div class="lado"><div><label>Desconto por arroba (kg) *</label><input id="ac_desc_arroba" inputmode="decimal" placeholder="Ex: 1"></div><div><label>Tara (kg) *</label><input id="ac_tara" inputmode="decimal" placeholder="Ex: 4"></div></div>
       <label>Preço da arroba (R$/@) *</label><input id="ac_preco_arroba" inputmode="decimal" placeholder="Ex: 300">
@@ -38,7 +39,10 @@
     if(nasceu)return salvar0.apply(this,arguments);
     const c=calcularCompraAnimalV114();
     if(!c)return alert('Preencha peso bruto, desconto por arroba, tara e preço da arroba para calcular o valor da compra.');
-    const extra={pesoBrutoCompraKg:n('a_pesocompra'),descontoArrobaCompraKg:n('ac_desc_arroba'),taraCompraKg:n('ac_tara'),precoArrobaCompra:n('ac_preco_arroba'),pesoLiquidoCompraKg:c.pesoLiquidoKg,pesoLiquidoCompraArroba:c.pesoLiquidoArroba,valorCompraCalculado:c.valorTotal};
+    const dataCompra=(document.getElementById('ac_data_compra')||{}).value||'';
+    if(!dataCompra)return alert('Informe a data da compra.');
+    if(dataCompra>hoje())return alert('A data da compra não pode ser no futuro.');
+    const extra={dataCompra,pesoBrutoCompraKg:n('a_pesocompra'),descontoArrobaCompraKg:n('ac_desc_arroba'),taraCompraKg:n('ac_tara'),precoArrobaCompra:n('ac_preco_arroba'),pesoLiquidoCompraKg:c.pesoLiquidoKg,pesoLiquidoCompraArroba:c.pesoLiquidoArroba,valorCompraCalculado:c.valorTotal};
     const antes=new Set((await getAll('animais')).map(a=>a.id));
     const r=await salvar0.apply(this,arguments);
     const novo=(await getAll('animais')).filter(a=>!antes.has(a.id)).sort((a,b)=>(b.criadoEm||0)-(a.criadoEm||0))[0];

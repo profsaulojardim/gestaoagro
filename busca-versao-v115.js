@@ -1,6 +1,6 @@
 /* V116 — busca/filtros no Livro Diário + identificação da versão na página inicial. */
 (()=>{
-  const APP_VERSAO='121';
+  const APP_VERSAO='123';
   let busca='';
   let tipo='todos';
 

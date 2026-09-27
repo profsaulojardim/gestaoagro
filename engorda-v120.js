@@ -99,7 +99,7 @@
     const conh=pts.filter(p=>p.kg!=null);
     let p=null,q=null;
     for(const x of conh){if(x.d<=d)p=x;else if(!q)q=x;}
-    if(p&&p.d===d)return {kg:p.kg,base:p,diasDesde:0,tipo:'medido'};
+    if(p&&p.d===d)return {kg:p.kg,base:p,diasDesde:0,tipo:p.tipo==='nasc'?'estimado':'medido'};
     if(p&&q){const tot=dias(p.d,q.d)||1,k=dias(p.d,d)/tot;return {kg:p.kg+(q.kg-p.kg)*k,base:p,diasDesde:dias(p.d,d),tipo:'interpolado'};}
     const cap=teto(a,cfg);
     if(p){const g=ganhoModelo(a,base,cfg,fator,p.d,d);const kg=p.kg>=cap?p.kg:Math.min(cap,p.kg+g);return {kg,base:p,diasDesde:dias(p.d,d),tipo:'estimado'};}
@@ -345,7 +345,7 @@
     const l=await get('lotes',loteId),cfg=await cfgEngorda(),base=await carregar(),fator=calibrar(base,cfg).fator;
     const as=base.animais.filter(a=>a.status==='Ativo'&&a.loteAtualId===loteId).sort((x,y)=>(x.codigo||0)-(y.codigo||0));
     const itens=as.map(a=>{const w=pesoEm(a,base,cfg,fator,hoje());
-      return `<div class="row" style="padding:10px 0;border-bottom:1px solid var(--linha);gap:10px"><div style="min-width:0"><b>${esc(rotulo(a))}</b> ${codAnimal(a)}
+      return `<div class="row" style="padding:10px 0;border-bottom:1px solid var(--linha);gap:10px"><div style="min-width:0"><b>${esc(rotuloCod(a))}</b>
         <div class="meta">${w?`estimado ${f0(w.kg)} kg`:'sem peso'}</div></div>
         <input class="pl_kg" data-id="${a.id}" inputmode="decimal" placeholder="kg" style="max-width:96px;margin:0" oninput="window._plMedia()"></div>`;}).join('');
     $t.innerHTML=`<button class="voltar" onclick="telaEngorda()">‹ Engorda e pesagens</button>
