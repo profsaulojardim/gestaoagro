@@ -529,7 +529,16 @@ async function garantirSyncMeta(){
 const uid=()=>crypto.randomUUID?crypto.randomUUID():Date.now()+"-"+Math.random();
 const codAnimal=a=>"#"+String((a&&a.codigo)||0).padStart(3,'0');
 const rotulo=a=>(a&&(a.brinco||a.nome))||codAnimal(a);
-const rotuloCod=a=>(a&&(a.brinco||a.nome))?`${a.brinco||a.nome} ${codAnimal(a)}`:codAnimal(a); // V123: sem "#005 #005"
+// V130: identificação padrão em listas e seleções — sempre começa pelo código, depois o nome e,
+// se for diferente do código, o brinco. Ex.: "#001 · José", "#007 · Mimosa · B-77", "#003".
+const rotuloCod=a=>{
+  if(!a)return "";
+  const cod=codAnimal(a),partes=[cod];
+  if(a.nome)partes.push(a.nome);
+  const b=String(a.brinco||"").trim();
+  if(b&&b.replace(/^#/,"").replace(/^0+/,"")!==String(a.codigo||0))partes.push(b);
+  return partes.join(" · ");
+};
 const normalizarBrinco=b=>(b||"").trim().toLocaleLowerCase('pt-BR');
 async function brincoEmUso(brinco,ignorarAnimalId=null){
   const chave=normalizarBrinco(brinco);
@@ -1099,7 +1108,7 @@ async function formDesmama(animalId){
     const corrigindo=a.desmamado;
     const dataInicial=(corrigindo&&a.dataDesmama)?a.dataDesmama:hoje();
     abrir(`<h2>${corrigindo?"Corrigir data da desmama":"Registrar desmama"}</h2>
-      <div class="meta" style="margin-bottom:10px"><b>${esc(rotulo(a))}</b> ${codAnimal(a)}${a.dataNascimento?` · nasc. ${fmt(a.dataNascimento)}`:""}</div>
+      <div class="meta" style="margin-bottom:10px"><b>${esc(rotuloCod(a))}</b>${a.dataNascimento?` · nasc. ${fmt(a.dataNascimento)}`:""}</div>
       <label>Data da desmama</label><input id="dm_data" type="date" value="${dataInicial}">
       <div class="lado" style="margin-top:18px"><button class="btn btn-sec" onclick="fechar()">Cancelar</button>
         <button class="btn" onclick="salvarDesmama('${animalId}')">Salvar</button></div>`);
@@ -3208,9 +3217,9 @@ async function formNovoAnimal(loteFixo,nascimento){
   if(lotes.length===0){fechar();return alert("Crie um lote primeiro.");}
   const optLotes=lotes.map(l=>{const p=propriedades.find(x=>x.id===l.propriedadeId);
     return`<option value="${l.id}" ${l.id===loteFixo?"selected":""}>${esc(l.nome)}${p?` — ${esc(p.nome)}`:""}</option>`;}).join("");
-  const femeas=animais.filter(a=>a.sexo==="F");
+  const femeas=animais.filter(a=>a.sexo==="F").sort((x,y)=>(x.codigo||0)-(y.codigo||0));
   const optMae=`<option value="">— nenhuma —</option>`+
-    femeas.map(m=>`<option value="${m.id}">${esc(rotulo(m))}</option>`).join("");
+    femeas.map(m=>`<option value="${m.id}">${esc(rotuloCod(m))}</option>`).join("");
   const optMarca=`<option value="">— selecione —</option>`+
     marcas.map(m=>`<option value="${m.id}">${esc(m.sigla)}${m.nome?` · ${esc(m.nome)}`:""}</option>`).join("");
   // no fluxo de nascimento, já é nascido na propriedade (sem toggle)
@@ -3268,7 +3277,7 @@ async function salvarAnimal(nascimento){
     custoEstoque: nasceu ? CUSTO_BEZERRO : (numBR("a_precocompra")||0),
     maeId,marcaId,loteAtualId:val("a_lote"),status:"Ativo",foto:_animalFoto||"",criadoEm:Date.now()};
   await put("animais",a);
-  if(maeId){const m=await get("animais",maeId);await registrarEvento(a.id,"Nascimento",a.dataNascimento,`Filho(a) de ${m?rotulo(m):"—"}`);}
+  if(maeId){const m=await get("animais",maeId);await registrarEvento(a.id,"Nascimento",a.dataNascimento,`Filho(a) de ${m?rotuloCod(m):"—"}`);}
   const naLista=!!(document.getElementById("f_tipo")&&document.getElementById("lista"));
   fechar(); if(naLista)abrirAnimaisOperacional(); else render();
 }
@@ -3363,9 +3372,9 @@ async function formEditarAnimal(id){
   const {propriedades,marcas,lotes,animais}=await tudo();
   const optLotes=lotes.map(l=>{const p=propriedades.find(x=>x.id===l.propriedadeId);
     return`<option value="${l.id}" ${l.id===a.loteAtualId?"selected":""}>${esc(l.nome)}${p?` — ${esc(p.nome)}`:""}</option>`;}).join("");
-  const femeas=animais.filter(x=>x.sexo==="F"&&x.id!==id);
+  const femeas=animais.filter(x=>x.sexo==="F"&&x.id!==id).sort((x,y)=>(x.codigo||0)-(y.codigo||0));
   const optMae=`<option value="">— nenhuma —</option>`+
-    femeas.map(m=>`<option value="${m.id}" ${m.id===a.maeId?"selected":""}>${esc(rotulo(m))}</option>`).join("");
+    femeas.map(m=>`<option value="${m.id}" ${m.id===a.maeId?"selected":""}>${esc(rotuloCod(m))}</option>`).join("");
   const optMarca=`<option value="">— sem marca —</option>`+
     marcas.map(m=>`<option value="${m.id}" ${m.id===a.marcaId?"selected":""}>${esc(m.sigla)}${m.nome?` · ${esc(m.nome)}`:""}</option>`).join("");
   const nasceu = a.nascidoNaPropriedade===true;
@@ -3757,7 +3766,7 @@ async function formManejo(tipo){
   const optGrupos=(grupos||[]).map(g=>`<option value="${g.id}">${esc(g.nome)} — ${qtdGrupo(g.id)} animal(is)</option>`).join("");
   const checksAnimais=ativos.map(a=>`<label class="mj-multi-item" data-busca="${esc((rotulo(a)+" "+codAnimal(a)+" "+nomeLote(a.loteAtualId)).toLowerCase())}" style="display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--linha);padding:10px 2px;margin:0;color:var(--texto)">
       <input type="checkbox" class="mj_multi_ck" value="${a.id}" onchange="atualizarContagemManejo()" style="width:20px;height:20px;flex:0 0 auto">
-      <span style="min-width:0"><b>${esc(rotulo(a))}</b> ${codAnimal(a)}<span class="meta" style="display:block">▦ ${esc(nomeLote(a.loteAtualId))}</span></span>
+      <span style="min-width:0"><b>${esc(rotuloCod(a))}</b><span class="meta" style="display:block">▦ ${esc(nomeLote(a.loteAtualId))}</span></span>
     </label>`).join("");
 
   let especifico="";
@@ -4017,7 +4026,7 @@ async function castrarAnimal(id){
   const a=await get("animais",id);if(!a)return;
   if(a.sexo!=="M")return alert("Só é possível registrar castração em machos.");
   abrir(`<h2>✂️ Registrar castração</h2>
-    <div class="meta" style="margin-bottom:8px"><b>${esc(rotulo(a))}</b> ${codAnimal(a)}</div>
+    <div class="meta" style="margin-bottom:8px"><b>${esc(rotuloCod(a))}</b></div>
     <label>Data</label><input id="ct_data" type="date" value="${hoje()}">
     <label>Observação (opcional)</label><input id="ct_obs" placeholder="Ex: método, responsável…">
     <div class="lado" style="margin-top:18px"><button class="btn btn-sec" onclick="fechar()">Cancelar</button>
