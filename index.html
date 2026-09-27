@@ -576,7 +576,16 @@ const COW=`<svg class="cattle" viewBox="0 0 640 512" xmlns="http://www.w3.org/20
 async function tudo(){
   const [propriedades,marcas,lotes,animais,eventos,medicamentos,pastos,grupos,grupo_animais]=await Promise.all(
     ["propriedades","marcas","lotes","animais","eventos","medicamentos","pastos","grupos","grupo_animais"].map(getAll));
+  _animaisPorId=new Map(animais.map(a=>[a.id,a])); // V125
   return {propriedades,marcas,lotes,animais,eventos,medicamentos,pastos,grupos,grupo_animais};
+}
+// V125: identificação da mãe — nome; se não tiver, brinco; se não tiver, o código (#001)
+let _animaisPorId=new Map();
+const nomeMae=m=>m?(m.nome||m.brinco||codAnimal(m)):"";
+function maeTexto(a){
+  if(!a||a.nascidoNaPropriedade!==true)return "";
+  const m=a.maeId?_animaisPorId.get(a.maeId):null;
+  return m?nomeMae(m):"não informada";
 }
 const propDoAnimal=(a,lotes)=>{const l=lotes.find(x=>x.id===a.loteAtualId);return l?l.propriedadeId:null;};
 
@@ -1363,7 +1372,8 @@ async function telaLotes(){
 async function verLote(id){
   topoPagina();
   const l=await get("lotes",id),p=l.propriedadeId?await get("propriedades",l.propriedadeId):null;
-  const animais=(await getAll("animais")).filter(a=>a.loteAtualId===id&&a.status==="Ativo");
+  const _todosAn=await getAll("animais");_animaisPorId=new Map(_todosAn.map(a=>[a.id,a]));
+  const animais=_todosAn.filter(a=>a.loteAtualId===id&&a.status==="Ativo");
   const nomeLote=l.nome;
   let lst=animais.length?"":`<div class="meta" style="padding:8px 4px">Nenhum animal ativo neste lote.</div>`;
   for(const a of animais.sort((x,y)=>x.brinco.localeCompare(y.brinco)))lst+=linhaAnimal(a,nomeLote,false);
@@ -1400,7 +1410,7 @@ async function telaAnimais(){
 
   let html=`<button class="voltar" onclick="irAba('painel')">‹ Gestão Operacional</button>
     <button class="btn" onclick="formNovoAnimal()">+ Novo animal</button>
-    <div class="lado"><button class="btn btn-sec" onclick="formNovoAnimal(null,true)">🍼 Registrar nascimento</button><button class="btn btn-sec" onclick="formDesmama()">Registrar desmama</button></div>`;
+    <button class="btn btn-sec" onclick="formDesmama()">🍼 Registrar desmama</button>`;
   if(lotes.length===0){html+=`<div class="vazio"><div class="big">🐄</div><b>Crie um lote primeiro</b><div class="meta">Todo animal pertence a um lote.</div></div>`;return void($t.innerHTML=html);}
   if(animais.length===0){html+=`<div class="vazio"><div class="big">🐄</div><b>Nenhum animal</b><div class="meta">Cadastre um animal ou registre um nascimento.</div></div>`;return void($t.innerHTML=html);}
   html+=`<input id="busca" placeholder="Buscar por brinco, nome ou nº…" oninput="filtrarAnimais()" style="margin-bottom:10px">
@@ -1535,6 +1545,7 @@ function linhaAnimal(a,nomeLote,mostraLote){
         <div class="ti">${esc(rotulo(a))}${a.brinco&&a.nome?` · ${esc(a.nome)}`:""}${origemTag(a)}</div>
         <div class="meta" style="margin-top:6px">${sx}${st}${idchip}${mostraLote?`<span class="chip chip-lote">▦ ${esc(nomeLote)}</span>`:""}
           ${a._marcaSigla?`<span class="chip chip-marca">${esc(a._marcaSigla)}</span>`:""}</div>
+        ${a.nascidoNaPropriedade===true?`<div class="meta" style="margin-top:6px">Mãe: <b>${esc(maeTexto(a))}</b></div>`:""}
         ${desmamaLinhaLista(a)}
       </div>
     </div></div>`;
@@ -1581,7 +1592,7 @@ async function verAnimal(id){
         ${a.nascidoNaPropriedade?`Origem: nascido na propriedade<br>`:(a.nascidoNaPropriedade===false?`Origem: comprado em ${dataAquisicao(a)?fmt(dataAquisicao(a)):"—"}${a.pesoCompraKg?` — ${a.pesoCompraKg} kg vivo`:""}<br>`:"")}
         ${a.custoEstoque?`Custo de estoque: ${moeda(a.custoEstoque)}<br>`:""}
         ${a.dataNascimento?`Nascimento: ${fmt(a.dataNascimento)}<br>`:""}
-        ${mae?`Mãe: <b onclick="verAnimal('${mae.id}')" style="color:var(--verde);cursor:pointer">${esc(rotulo(mae))}</b><br>`:""}
+        ${mae?`Mãe: <b onclick="verAnimal('${mae.id}')" style="color:var(--verde);cursor:pointer">${esc(nomeMae(mae))}</b><br>`:(a.nascidoNaPropriedade===true?`Mãe: não informada<br>`:"")}
         ${filhos.length?`Filhos: ${filhos.length}`:""}</div>
       ${a.saida?blocoSaida(a.saida):""}</div>
     ${a.nascidoNaPropriedade===true?blocoDesmamaFicha(a):""}
