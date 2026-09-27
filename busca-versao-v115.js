@@ -4,10 +4,7 @@
   let busca='';
   let tipo='todos';
 
-  function norm(s){
-    return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
-  }
-
+  function norm(s){return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();}
   function classificar(txt){
     const t=norm(txt);
     if(t.includes('compra de animal'))return 'compra_animal';
@@ -20,41 +17,18 @@
     if(t.includes('despesa')||t.includes('custo de producao')||t.includes('custo / despesa'))return 'despesa';
     return 'outros';
   }
-
   function aplicarFiltros(){
-    const area=document.getElementById('hc-resultados');
-    if(!area)return;
-    const q=norm(busca);
-    let visiveis=0;
-    const cards=[...area.querySelectorAll('.card')];
-    cards.forEach(card=>{
-      const txt=card.textContent||'';
-      const okBusca=!q||norm(txt).includes(q);
-      const okTipo=tipo==='todos'||classificar(txt)===tipo;
-      const ok=okBusca&&okTipo;
-      card.style.display=ok?'':'none';
-      if(ok)visiveis++;
-    });
+    const area=document.getElementById('hc-resultados');if(!area)return;
+    const q=norm(busca);let visiveis=0;const cards=[...area.querySelectorAll('.card')];
+    cards.forEach(card=>{const txt=card.textContent||'';const ok=(!q||norm(txt).includes(q))&&(tipo==='todos'||classificar(txt)===tipo);card.style.display=ok?'':'none';if(ok)visiveis++;});
     let vazio=document.getElementById('hc-sem-resultado');
-    if(!vazio){
-      vazio=document.createElement('div');
-      vazio.id='hc-sem-resultado';
-      vazio.className='vazio';
-      vazio.innerHTML='<div class="big">🔎</div><b>Nenhum lançamento encontrado</b><div class="meta">Tente alterar a busca ou o tipo de lançamento.</div>';
-      area.appendChild(vazio);
-    }
+    if(!vazio){vazio=document.createElement('div');vazio.id='hc-sem-resultado';vazio.className='vazio';vazio.innerHTML='<div class="big">🔎</div><b>Nenhum lançamento encontrado</b><div class="meta">Tente alterar a busca ou o tipo de lançamento.</div>';area.appendChild(vazio);}
     vazio.style.display=(cards.length&&visiveis===0)?'':'none';
-    const n=document.getElementById('hc-contagem');
-    if(n)n.textContent=`${visiveis} lançamento${visiveis===1?'':'s'} encontrado${visiveis===1?'':'s'}`;
+    const n=document.getElementById('hc-contagem');if(n)n.textContent=`${visiveis} lançamento${visiveis===1?'':'s'} encontrado${visiveis===1?'':'s'}`;
   }
-
-  window.hcBuscar=function(v){busca=v||'';aplicarFiltros();};
-  window.hcFiltrarTipo=function(v){tipo=v||'todos';aplicarFiltros();};
-  window.hcLimpar=function(){
-    busca='';tipo='todos';
-    const b=document.getElementById('hc-busca'),f=document.getElementById('hc-tipo');
-    if(b)b.value='';if(f)f.value='todos';aplicarFiltros();
-  };
+  window.hcBuscar=v=>{busca=v||'';aplicarFiltros();};
+  window.hcFiltrarTipo=v=>{tipo=v||'todos';aplicarFiltros();};
+  window.hcLimpar=()=>{busca='';tipo='todos';const b=document.getElementById('hc-busca'),f=document.getElementById('hc-tipo');if(b)b.value='';if(f)f.value='todos';aplicarFiltros();};
 
   const hist0=window.finHistoricoContabil;
   if(typeof hist0==='function')window.finHistoricoContabil=async function(){
@@ -62,16 +36,13 @@
     try{
       const seletores=$t.querySelector('.lado');
       if(seletores&&!document.getElementById('hc-filtros')){
-        const box=document.createElement('div');
-        box.id='hc-filtros';
+        const box=document.createElement('div');box.id='hc-filtros';
         box.innerHTML=`
-          <div style="margin:0 0 10px">
-            <div style="position:relative">
-              <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:18px;pointer-events:none">🔎</span>
-              <input id="hc-busca" type="search" value="${esc(busca)}" placeholder="Buscar lançamento, conta, valor..." oninput="hcBuscar(this.value)" style="width:100%;padding:13px 42px 13px 44px;border:1.5px solid var(--linha);border-radius:14px;background:#fff;font:inherit;color:var(--texto)">
-              <button type="button" onclick="hcLimpar()" aria-label="Limpar busca" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;color:var(--muted);font-size:19px;padding:7px">×</button>
-            </div>
-          </div>
+          <div style="margin:0 0 10px"><div style="position:relative">
+            <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:18px;pointer-events:none">🔎</span>
+            <input id="hc-busca" type="search" value="${esc(busca)}" placeholder="Buscar lançamento, conta, valor..." oninput="hcBuscar(this.value)" style="width:100%;padding:13px 42px 13px 44px;border:1.5px solid var(--linha);border-radius:14px;background:#fff;font:inherit;color:var(--texto)">
+            <button type="button" onclick="hcLimpar()" aria-label="Limpar busca" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;color:var(--muted);font-size:19px;padding:7px">×</button>
+          </div></div>
           <div class="lado" style="margin-bottom:7px">
             <select id="hc-tipo" onchange="hcFiltrarTipo(this.value)" style="width:100%">
               <option value="todos" ${tipo==='todos'?'selected':''}>Todos os tipos</option>
@@ -89,30 +60,21 @@
           </div>
           <div id="hc-contagem" class="meta" style="margin:0 4px 12px"></div>`;
         seletores.insertAdjacentElement('afterend',box);
-
-        // Tudo depois dos filtros pertence aos resultados do Livro Diário.
-        const area=document.createElement('div');area.id='hc-resultados';
-        let n=box.nextElementSibling;
-        while(n){const prox=n.nextElementSibling;area.appendChild(n);n=prox;}
-        box.insertAdjacentElement('afterend',area);
-        aplicarFiltros();
+        const area=document.createElement('div');area.id='hc-resultados';let n=box.nextElementSibling;
+        while(n){const prox=n.nextElementSibling;area.appendChild(n);n=prox;}box.insertAdjacentElement('afterend',area);aplicarFiltros();
       }
-    }catch(e){console.error('Busca histórico contábil V115:',e);}
-    return r;
+    }catch(e){console.error('Busca histórico contábil V115:',e);}return r;
   };
 
-  const inicio0=window.telaInicio;
-  if(typeof inicio0==='function')window.telaInicio=async function(){
-    const r=await inicio0.apply(this,arguments);
+  function inserirVersao(){
     try{
-      if($t&&!document.getElementById('app-versao')){
-        const v=document.createElement('div');
-        v.id='app-versao';
-        v.textContent=`Versão ${APP_VERSAO}`;
-        v.style.cssText='text-align:center;color:var(--muted);font-size:12px;margin:22px 0 8px;opacity:.8;';
-        $t.appendChild(v);
-      }
+      if(!$t||!$t.querySelector('.home-greet')||document.getElementById('app-versao'))return;
+      const v=document.createElement('div');v.id='app-versao';v.textContent=`Versão ${APP_VERSAO}`;
+      v.style.cssText='text-align:center;color:var(--muted);font-size:12px;margin:22px 0 8px;opacity:.8;';$t.appendChild(v);
     }catch(e){console.error('Versão V115:',e);}
-    return r;
-  };
+  }
+  const inicio0=window.telaInicio;
+  if(typeof inicio0==='function')window.telaInicio=async function(){const r=await inicio0.apply(this,arguments);inserirVersao();return r;};
+  setTimeout(inserirVersao,300);
+  setTimeout(inserirVersao,1000);
 })();
