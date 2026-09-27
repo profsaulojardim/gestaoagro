@@ -1,7 +1,7 @@
 /* Service Worker do "Gestão do Rebanho"
    V117: gerenciamento de dados movido para Perfil > Nuvem e segurança. */
 
-const CACHE = "rebanho-v117-perfil1";
+const CACHE = "rebanho-v117-perfil2";
 const APP_VERSION = "117";
 const CORE = ["./manifest.json", "./icon.png", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png", "./boi.png", "./bezerro.png", "./troca-v81.js", "./troca-v81-core.js", "./perfil-backup-v87.js", "./perfil-cleanup-v90.js", "./ui-cleanup-v91.js", "./saida-v92.js", "./modulos-v93.js", "./saida-menu-v94.js", "./venda-financeiro-v109.js", "./financeiro-cleanup-v110.js", "./animais-baixados-v111.js", "./ui-v113.js", "./compra-animal-v114.js", "./contabilidade-v115.js", "./busca-versao-v115.js", "./gestao-dados-v116.js", "./perfil-gestao-v117.js"];
 self.addEventListener("install",e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting()));});
