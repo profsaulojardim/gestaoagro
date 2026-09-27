@@ -2556,6 +2556,9 @@ async function finResumo(){
   const desp=lancs.filter(l=>l.tipo==="despesa").reduce((s,l)=>s+(l.valor||0),0);
   const ganhoReal=lancs.filter(l=>l.tipo==="receita").reduce((s,l)=>s+(l.ganhoRealizado||0),0);
   const resultado=rec-cpv-desp+ganhoReal;
+  // V132: resultado bruto (receita − CPV − custos de produção) e líquido (bruto − despesas)
+  const custosProd=lancs.filter(l=>l.tipo==="despesa"&&(l.natureza==="custo"||l.classe==="custo")).reduce((s,l)=>s+(l.valor||0),0);
+  const resultadoBruto=rec-cpv+ganhoReal-custosProd;
   // V121: saldo em aberto de todos os anos (filtrado pela propriedade), igual em Início, Resumo e Relatórios
   const abertos=todos.filter(l=>!_finProp||l.propriedadeId===_finProp);
   const aReceber=somaAReceber(abertos);
@@ -2593,18 +2596,19 @@ async function finResumo(){
       <select onchange="_finProp=this.value;finResumo()">${optProp}</select>
       <select onchange="_finAno=this.value;finResumo()" style="max-width:110px">${optAno}</select>
     </div>
-    <div class="fin-hero"><div class="lbl">Resultado de ${_finAno}${_finProp?" · "+esc(nomeProp(_finProp)):""} (competência)</div>
+    <div class="fin-hero"><div class="lbl">Resultado líquido de ${_finAno}${_finProp?" · "+esc(nomeProp(_finProp)):""} (competência)</div>
       <div class="num">${moeda(resultado)}</div>
-      <div class="lbl" style="margin-top:2px">receita − CPV − despesas · ${resultado>=0?"lucro":"prejuízo"} no período</div></div>
+      <div class="lbl" style="margin-top:2px">receita − CPV − custos − despesas · ${resultado>=0?"lucro":"prejuízo"} no período</div></div>
     <div class="fin-cards">
       <div class="fin-c"><div class="cl">💰 Receita de vendas</div><div class="cv" style="color:var(--verde)">${moeda(rec)}</div></div>
       <div class="fin-c"><div class="cl">🐂 CPV (custo dos vendidos)</div><div class="cv" style="color:var(--perigo)">${moeda(cpv)}</div></div>
+      <div class="fin-c"><div class="cl">📊 Resultado bruto</div><div class="cv" style="color:${resultadoBruto>=0?"var(--verde)":"var(--perigo)"}">${moeda(resultadoBruto)}</div><div class="meta" style="font-size:11.5px;margin-top:2px">receita − CPV − custos de produção</div></div>
+      <div class="fin-c"><div class="cl">✅ Resultado líquido</div><div class="cv" style="color:${resultado>=0?"var(--verde)":"var(--perigo)"}">${moeda(resultado)}</div><div class="meta" style="font-size:11.5px;margin-top:2px">bruto − despesas</div></div>
       <div class="fin-c"><div class="cl">🧾 Despesas</div><div class="cv" style="color:var(--perigo)">${moeda(desp)}</div></div>
       <div class="fin-c"><div class="cl">🐄 Valor do rebanho</div><div class="cv">${moeda(valorRebanho)}</div></div>
       <div class="fin-c"><div class="cl">⏳ A receber</div><div class="cv">${moeda(aReceber)}</div></div>
       <div class="fin-c"><div class="cl">📌 A pagar</div><div class="cv">${moeda(aPagar)}</div></div>
     </div>
-    <button class="btn" onclick="formLancamento()">+ Novo lançamento</button>
     <div class="h3">Evolução mensal <span style="font-weight:400;font-size:12px;color:var(--muted)">· receita e custos+despesas</span></div>
     <div class="card" style="padding:10px">${chart}</div>
     ${porProp}`;
@@ -2706,9 +2710,12 @@ async function finRelatorios(){
   const desp=lancs.filter(l=>l.tipo==="despesa").reduce((s,l)=>s+(l.valor||0),0);
   const despVendas=lancs.filter(l=>l.tipo==="despesa"&&l.classe==="vendas").reduce((s,l)=>s+(l.valor||0),0);
   const despPerdas=lancs.filter(l=>l.tipo==="despesa"&&l.origem==="morte_animal").reduce((s,l)=>s+(l.valor||0),0); // V119
-  const despAdmin=desp-despVendas-despPerdas;
+  // V132: resultado bruto (receita − CPV − custos de produção) e líquido (bruto − despesas)
+  const custosProd=lancs.filter(l=>l.tipo==="despesa"&&(l.natureza==="custo"||l.classe==="custo")).reduce((s,l)=>s+(l.valor||0),0);
+  const despAdmin=desp-despVendas-despPerdas-custosProd; // V132: custos de produção saem daqui (vão antes do bruto)
   const ganhoReal=lancs.filter(l=>l.tipo==="receita").reduce((s,l)=>s+(l.ganhoRealizado||0),0);
   const resultado=rec-cpv-desp+ganhoReal;
+  const resultadoBruto=rec-cpv+ganhoReal-custosProd;
   const estoque=animais.filter(a=>a.status==="Ativo"&&(!_finProp||propDoAnimal(a)===_finProp)).reduce((s,a)=>s+(a.custoEstoque||0),0);
   // Ganho a realizar (passivo): bezerros nascidos ainda no estoque (vivos)
   const ganhoAReceber=animais.filter(a=>a.nascidoNaPropriedade===true&&a.status==="Ativo"&&(!_finProp||propDoAnimal(a)===_finProp)).reduce((s,a)=>s+(a.custoEstoque||0),0);
@@ -2753,12 +2760,13 @@ async function finRelatorios(){
     ${linhaDRE("Receita de vendas",rec,"var(--verde)")}
     ${linhaDRE("(−) CPV — custo dos vendidos",-cpv,"var(--perigo)")}
     ${ganhoReal>0?linhaDRE("(+) Ganho realizado (bezerros vendidos)",ganhoReal,"var(--verde)"):""}
-    ${linhaDRE("(=) Lucro bruto",rec-cpv+ganhoReal,rec-cpv+ganhoReal>=0?"var(--verde)":"var(--perigo)")}
-    ${linhaDRE("(−) Despesas operacionais",-desp,"var(--perigo)")}
+    ${linhaDRE("(−) Custos de produção",-custosProd,"var(--perigo)")}
+    ${linhaDRE("(=) Resultado bruto",resultadoBruto,resultadoBruto>=0?"var(--verde)":"var(--perigo)")}
+    ${linhaDRE("(−) Despesas",-(desp-custosProd),"var(--perigo)")}
     <div class="card row" style="cursor:default;margin-left:14px"><div class="ti" style="font-size:13px;color:var(--muted)">• Administrativas / gerais</div><div style="font-weight:700;color:var(--perigo)">${moeda(-despAdmin)}</div></div>
     <div class="card row" style="cursor:default;margin-left:14px"><div class="ti" style="font-size:13px;color:var(--muted)">• Com vendas</div><div style="font-weight:700;color:var(--perigo)">${moeda(-despVendas)}</div></div>
     ${despPerdas>0?`<div class="card row" style="cursor:default;margin-left:14px"><div class="ti" style="font-size:13px;color:var(--muted)">• Perdas com morte de animais</div><div style="font-weight:700;color:var(--perigo)">${moeda(-despPerdas)}</div></div>`:""}
-    ${linhaDRE("(=) Resultado",resultado,resultado>=0?"var(--verde)":"var(--perigo)")}
+    ${linhaDRE("(=) Resultado líquido",resultado,resultado>=0?"var(--verde)":"var(--perigo)")}
     <div class="h3">Posição atual (patrimônio)</div>
     ${linhaDRE("🐄 Estoque de semoventes (valor do rebanho)",estoque)}
     ${estoqueInsumos>0?linhaDRE("📦 Estoque de insumos",estoqueInsumos):""}
