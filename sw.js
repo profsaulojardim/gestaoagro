@@ -1,7 +1,7 @@
 /* Service Worker do "Gestão do Rebanho"
-   V115: histórico contábil separado e compras de animais nas partidas. */
+   V115: histórico contábil persistente e compras de animais nas partidas. */
 
-const CACHE = "rebanho-v115";
+const CACHE = "rebanho-v115-ledger1";
 const APP_VERSION = "115";
 const CORE = ["./manifest.json", "./icon.png", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png", "./boi.png", "./bezerro.png", "./troca-v81.js", "./troca-v81-core.js", "./perfil-backup-v87.js", "./perfil-cleanup-v90.js", "./ui-cleanup-v91.js", "./saida-v92.js", "./modulos-v93.js", "./saida-menu-v94.js", "./venda-financeiro-v109.js", "./financeiro-cleanup-v110.js", "./animais-baixados-v111.js", "./ui-v113.js", "./compra-animal-v114.js", "./contabilidade-v115.js"];
 self.addEventListener("install",e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting()));});
