@@ -72,7 +72,7 @@
   };
 
   window.salvarCompraAnimalV116=async function(id){
-    const c=calcCompraV116();if(!c)return alert('Preencha corretamente peso bruto, desconto, tara e preço/@.');
+    const c=calcCompraV116();if(!c)return alert('Preencha corretamente peso bruto, desconto, tara e preço/@.');if(!(c.valorTotal>0))return alert('O valor calculado da compra ficou zerado. Informe o preço da @ e o peso bruto.');
     const a=await get('animais',id);if(!a)return;
     a.dataCompra=document.getElementById('v116_ca_data').value||hoje();a.pesoBrutoCompraKg=n('v116_ca_pb');a.pesoCompraKg=a.pesoBrutoCompraKg;a.descontoArrobaCompraKg=n('v116_ca_desc');a.taraCompraKg=n('v116_ca_tara');a.precoArrobaCompra=n('v116_ca_preco');a.pesoLiquidoCompraKg=c.pesoLiquidoKg;a.pesoLiquidoCompraArroba=c.pesoLiquidoArroba;a.valorCompraCalculado=c.valorTotal;a.custoEstoque=c.valorTotal;a.formaPagamentoCompra=document.getElementById('v116_ca_forma').value||'vista';
     await put('animais',a);fechar();alert('Compra corrigida. O custo do animal e o histórico contábil foram atualizados.');finHistoricoContabil();
@@ -88,7 +88,7 @@
       <label>Preço da arroba (R$/@)</label><input id="v116_v_preco" inputmode="decimal" value="${valorInput(l.precoArroba)}">
       <div id="v116_v_res" class="card" style="margin-top:12px"></div>
       <label>Valor efetivamente negociado (R$)</label><input id="v116_v_valor" inputmode="decimal" value="${valorInput(l.valor)}"><div class="meta">Pode alterar manualmente. Se deixar vazio, será usado o valor calculado pela arroba.</div>
-      <label>Situação</label><select id="v116_v_pago"><option value="1" ${l.pago?'selected':''}>Pago / recebido</option><option value="0" ${!l.pago?'selected':''}>Em aberto / a receber</option></select>
+      <div class="meta" style="margin-top:12px">Recebimentos desta venda são registrados em Lançamentos (botão 💵).</div>
       <div class="lado" style="margin-top:16px"><button class="btn btn-sec" onclick="fechar()">Cancelar</button><button class="btn" onclick="salvarVendaEditadaV116('${id}',${q})">Salvar correção</button></div>`);
     ['v116_v_pb','v116_v_desc','v116_v_tara','v116_v_preco'].forEach(x=>document.getElementById(x)?.addEventListener('input',()=>calcVendaV116(q)));calcVendaV116(q);
   };
@@ -102,7 +102,7 @@
   window.salvarVendaEditadaV116=async function(id,q){
     const c=calcVendaV116(q);if(!c)return alert('Preencha corretamente os dados da venda.');const l=await get('lancamentos',id);if(!l)return;
     const manual=n('v116_v_valor'),valor=manual==null?c.valorTotal:manual;
-    l.data=document.getElementById('v116_v_data').value||l.data;l.pesoBruto=n('v116_v_pb');l.descontoArrobaKg=n('v116_v_desc');l.taraPorAnimalKg=n('v116_v_tara');l.precoArroba=n('v116_v_preco');l.pesoLiquidoKg=c.pesoLiquidoKg;l.pesoLiquidoArroba=c.pesoLiquidoArroba;l.pesoMedioArroba=c.pesoMedioArroba;l.pesoMedioKg=c.pesoMedioKg;l.valorCalculado=c.valorTotal;l.valor=valor;l.pago=document.getElementById('v116_v_pago').value==='1';if(Number.isFinite(Number(l.custo)))l.ganhoRealizado=Math.max(0,valor-Number(l.custo||0));await put('lancamentos',l);
+    l.data=document.getElementById('v116_v_data').value||l.data;l.pesoBruto=n('v116_v_pb');l.descontoArrobaKg=n('v116_v_desc');l.taraPorAnimalKg=n('v116_v_tara');l.precoArroba=n('v116_v_preco');l.pesoLiquidoKg=c.pesoLiquidoKg;l.pesoLiquidoArroba=c.pesoLiquidoArroba;l.pesoMedioArroba=c.pesoMedioArroba;l.pesoMedioKg=c.pesoMedioKg;l.valorCalculado=c.valorTotal;l.valor=valor;l.ganhoRealizado=0; /* V120: modelo de custo — não existe mais ganho a realizar */ /* V118: ganho realizado = custo dos bezerros nascidos na venda, não a margem */await put('lancamentos',l);
     for(const aid of (l.animalIds||[])){const a=await get('animais',aid);if(a&&a.saida){Object.assign(a.saida,{data:l.data,pesoBruto:l.pesoBruto,descontoArrobaKg:l.descontoArrobaKg,taraPorAnimalKg:l.taraPorAnimalKg,precoArroba:l.precoArroba,pesoLiquido:c.pesoLiquidoKg,pesoLiquidoKg:c.pesoLiquidoKg,pesoLiquidoArroba:c.pesoLiquidoArroba,pesoMedioArroba:c.pesoMedioArroba,pesoMedioKg:c.pesoMedioKg,valorCalculado:c.valorTotal,valor});await put('animais',a);}}
     fechar();alert('Venda corrigida. O lançamento financeiro e as partidas contábeis vinculadas foram atualizados.');finHistoricoContabil();
   };
@@ -122,12 +122,58 @@
     if((document.getElementById('v116_reset_txt')?.value||'').trim().toUpperCase()!=='REINICIAR')return alert('Digite REINICIAR para confirmar.');
     if(!confirm('Última confirmação: apagar todos os dados operacionais e financeiros desta conta?'))return;
     const stores=['grupo_animais','eventos','avisos','insumo_mov','lancamentos','animais','grupos','lotes','pastos','medicamentos','insumos','marcas','propriedades'];
-    const org=await activeOrgIdLocal();let total=0;
+    const org=await activeOrgIdLocal();let total=0;window._suspenderEstornoV119=true;
     try{
       for(const s of stores){const arr=await getAllRaw(s);for(const o of arr){if(o.deleted_at)continue;if(org&&o.organization_id&&o.organization_id!==org)continue;await del(s,o.id);total++;}}
       const cfg=(await get('perfil','config'))||{id:'config'};cfg.migracaoContabilV115Em=null;cfg.resetDadosV116Em=Date.now();await put('perfil',cfg);
       try{await sincronizarAgora({silencioso:true});}catch(_){ }
       fechar();alert(`Dados reiniciados. ${total} registro(s) foram removidos. Sua conta e perfil foram preservados.`);irAba('inicio');
-    }catch(e){console.error('Reset V116:',e);alert('Não foi possível concluir a reinicialização: '+(e.message||e));}
+    }catch(e){console.error('Reset V116:',e);alert('Não foi possível concluir a reinicialização: '+(e.message||e));}finally{window._suspenderEstornoV119=false;}
   };
+  /* V118 — Ganho realizado de uma venda = soma do custo de estoque dos animais NASCIDOS na
+     propriedade incluídos nela (é a realização do "ganho a realizar" lançado no nascimento).
+     A V116 gravava aqui a margem (valor − custo), o que somava o lucro duas vezes no resultado. */
+  async function ganhoEsperadoVendaV118(l){
+    const ids=(l.animalIds&&l.animalIds.length)?l.animalIds:(l.origem==='venda_animal'&&l.refId?[l.refId]:[]);
+    if(!ids.length)return null;
+    const todos=await getAllRaw('animais');
+    const as=ids.map(id=>todos.find(a=>a.id===id));
+    if(as.some(a=>!a))return null; // animal não encontrado: não arrisca alterar
+    return as.reduce((s,a)=>s+(a.nascidoNaPropriedade===true?(Number(a.custoEstoque)||0):0),0);
+  }
+  window.ganhoEsperadoVendaV118=ganhoEsperadoVendaV118;
+
+  /* V120 — fim do "ganho a realizar" (modelo de custo).
+     Vendas antigas: o CPV incluía R$ 500 por bezerro nascido e o mesmo valor voltava como
+     "ganho realizado". Agora o bezerro nascido tem custo zero, então tiramos os R$ 500 do CPV e
+     zeramos o ganho. O resultado de cada venda não muda. Também corrige vendas que a V116
+     gravou com a margem no lugar do ganho. Cada venda é marcada (modeloCusto:"v120") e nunca
+     é processada duas vezes, em nenhum aparelho. */
+  const CUSTO_BEZERRO_LEGADO=500;
+  async function migrarModeloCustoV120(){
+    try{
+      const raw=await getAllRaw('animais');
+      const ls=(await getAll('lancamentos')).filter(l=>l.tipo==='receita'&&(l.origem==='venda_animais'||l.origem==='venda_animal')&&l.modeloCusto!=='v120');
+      let nv=0,na=0;
+      for(const l of ls){
+        const ids=(l.animalIds&&l.animalIds.length)?l.animalIds:(l.origem==='venda_animal'&&l.refId?[l.refId]:[]);
+        const as=ids.map(id=>raw.find(a=>a.id===id));
+        const custo=Number(l.custo)||0, ganho=Number(l.ganhoRealizado)||0;
+        let parteNascidos;
+        if(ids.length&&as.every(Boolean))parteNascidos=as.filter(a=>a.nascidoNaPropriedade===true).length*CUSTO_BEZERRO_LEGADO;
+        else parteNascidos=(ganho>0&&ganho<=custo)?ganho:0; // sem os animais: usa o ganho gravado se for plausível
+        l.custo=Math.max(0,custo-Math.min(parteNascidos,custo));
+        l.ganhoRealizado=0;
+        l.modeloCusto='v120';
+        await put('lancamentos',l);nv++;
+      }
+      for(const a of raw.filter(a=>!a.deleted_at&&a.nascidoNaPropriedade===true&&(Number(a.custoEstoque)||0)>0)){
+        a.custoEstoque=0;await put('animais',a);na++; // o gancho contábil estorna a partida de nascimento
+      }
+      if(nv||na)console.info(`V120: modelo de custo aplicado — ${nv} venda(s) e ${na} bezerro(s) ajustados.`);
+    }catch(e){console.error('Migração V120:',e);}
+  }
+  window.migrarModeloCustoV120=migrarModeloCustoV120;
+  const iniciarV120=()=>{if(typeof db!=='undefined'&&db){setTimeout(migrarModeloCustoV120,1200);return;}setTimeout(iniciarV120,400);};
+  iniciarV120();
 })();

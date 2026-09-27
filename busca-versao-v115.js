@@ -1,12 +1,14 @@
 /* V116 — busca/filtros no Livro Diário + identificação da versão na página inicial. */
 (()=>{
-  const APP_VERSAO='116';
+  const APP_VERSAO='121';
   let busca='';
   let tipo='todos';
 
   function norm(s){return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();}
   function classificar(txt){
     const t=norm(txt);
+    if(t.includes('estorno'))return 'estorno';
+    if(t.startsWith('pagamento ·')||t.startsWith('recebimento ·')||t.includes('pagamento · ')||t.includes('recebimento · '))return 'liquidacao';
     if(t.includes('compra de animal'))return 'compra_animal';
     if(t.includes('nascimento'))return 'nascimento';
     if(t.includes('compra de insumo'))return 'compra_insumo';
@@ -54,7 +56,7 @@
               <option value="despesa" ${tipo==='despesa'?'selected':''}>Custos / despesas</option>
               <option value="investimento" ${tipo==='investimento'?'selected':''}>Investimentos</option>
               <option value="compra_insumo" ${tipo==='compra_insumo'?'selected':''}>Compra de insumos</option>
-              <option value="outros" ${tipo==='outros'?'selected':''}>Outros</option>
+              <option value="liquidacao" ${tipo==='liquidacao'?'selected':''}>Pagamentos / recebimentos</option><option value="estorno" ${tipo==='estorno'?'selected':''}>Estornos</option><option value="outros" ${tipo==='outros'?'selected':''}>Outros</option>
             </select>
             <button type="button" onclick="hcLimpar()" style="max-width:105px;background:#fff;color:var(--verde-esc);border:1.5px solid var(--linha);border-radius:12px;padding:10px 12px;font-weight:700">Limpar</button>
           </div>

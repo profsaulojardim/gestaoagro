@@ -1,6 +1,7 @@
 /* V113 — filtros financeiros por natureza + estoque em seções recolhidas. */
 (()=>{
   const natDe=l=>{
+    if(l&&l.tipo==='compra_animal')return 'compra';
     if(l&&['receita','custo','despesa','investimento'].includes(l.natureza))return l.natureza;
     if(l&&l.tipo==='receita')return 'receita';
     if(l&&l.tipo==='investimento')return 'investimento';
@@ -11,7 +12,8 @@
     receita:{label:'Receita',plural:'Receitas',icon:'🟢',cor:'var(--verde)'},
     custo:{label:'Custo de produção',plural:'Custos',icon:'🟠',cor:'#c77700'},
     despesa:{label:'Despesa',plural:'Despesas',icon:'🔴',cor:'var(--perigo)'},
-    investimento:{label:'Investimento',plural:'Investimentos',icon:'🔵',cor:'#3478b8'}
+    investimento:{label:'Investimento',plural:'Investimentos',icon:'🔵',cor:'#3478b8'},
+    compra:{label:'Compra de animais (estoque)',plural:'Compras',icon:'🐂',cor:'#3478b8'}
   };
   if(!document.getElementById('ui113-css')){
     const s=document.createElement('style');s.id='ui113-css';s.textContent=`
@@ -23,17 +25,22 @@
     topoPagina();
     const {propriedades}=await tudo();
     const nomeProp=id=>(propriedades.find(p=>p.id===id)||{}).nome||'';
-    let lancs=await getAll('lancamentos');
+    let lancs=(await getAll('lancamentos')).filter(l=>l.tipo!=='partida_contabil');
     if(_finProp)lancs=lancs.filter(l=>l.propriedadeId===_finProp);
     if(_finFiltro!=='todos')lancs=lancs.filter(l=>natDe(l)===_finFiltro);
     lancs.sort((a,b)=>(b.data||'').localeCompare(a.data||'')||(b.criadoEm||0)-(a.criadoEm||0));
     const chip=(k,l)=>`<button class="fin113-chip ${_finFiltro===k?'on':''}" onclick="_finFiltro='${k}';finLancamentos()">${l}</button>`;
     const itens=lancs.map(l=>{
       const n=natDe(l),cfg=NAT[n],entrada=n==='receita',sinal=entrada?'+':'−';
-      const situ=l.pago?'Pago':(entrada?'A receber':'A pagar');
-      return `<div class="card"><div class="row"><div style="min-width:0"><div class="ti" style="font-size:15px">${cfg.icon} ${esc(l.categoria||cfg.label)}</div><div class="meta" style="color:${cfg.cor};font-weight:700">${cfg.label}</div></div><div style="font-weight:800;color:${cfg.cor};white-space:nowrap">${sinal} ${moeda(l.valor||0)}</div></div>${l.descricao?`<div class="meta">${esc(l.descricao)}</div>`:''}<div class="meta">📅 ${fmt(l.data)}${l.propriedadeId?` · ${esc(nomeProp(l.propriedadeId))}`:''} · <span style="color:${l.pago?'var(--verde)':'#b8860b'};font-weight:600">${situ}</span></div><div style="margin-top:6px"><button class="btn-fant" style="padding:2px 10px 2px 0;color:var(--verde);font-weight:600" onclick="toggleLancPago('${l.id}')">${l.pago?'Marcar em aberto':'Marcar pago'}</button><button class="btn-fant" style="padding:2px 8px;color:var(--verde)" onclick="formLancamento('${l.id}')">✎</button><button class="btn-fant" style="padding:2px 8px;color:var(--perigo)" onclick="excluirLancamento('${l.id}')">✕</button></div></div>`;
+      const morte=l.origem==='morte_animal';const semCaixa=morte||l.origem==='consumo_insumo';
+      const saldo=saldoAberto(l),pagoParc=totalPagoLanc(l),extras=(l.pagamentos||[]).filter(p=>!p.noAto).length;
+      const situ=morte?'Baixa de estoque (sem caixa)':l.origem==='consumo_insumo'?'Consumo do estoque (sem caixa)'
+        :saldo<=0.005?(l.aVista?'À vista':(entrada?'Recebido':'Pago'))
+        :pagoParc>0.005?`${entrada?'A receber':'A pagar'} ${moeda(saldo)} de ${moeda(l.valor||0)}`:(entrada?'A receber':'A pagar');
+      const btnPag=semCaixa||(saldo<=0.005&&!extras)?'':`<button class="btn-fant" style="padding:2px 10px 2px 0;color:var(--verde);font-weight:600" onclick="formPagamentoLanc('${l.id}')">${saldo>0.005?(entrada?'💵 Registrar recebimento':'💵 Registrar pagamento'):`Pagamentos (${extras})`}</button>`;
+      return `<div class="card"><div class="row"><div style="min-width:0"><div class="ti" style="font-size:15px">${cfg.icon} ${esc(l.categoria||cfg.label)}</div><div class="meta" style="color:${cfg.cor};font-weight:700">${cfg.label}</div></div><div style="font-weight:800;color:${cfg.cor};white-space:nowrap">${sinal} ${moeda(l.valor||0)}</div></div>${l.descricao?`<div class="meta">${esc(l.descricao)}</div>`:''}<div class="meta">📅 ${fmt(l.data)}${l.propriedadeId?` · ${esc(nomeProp(l.propriedadeId))}`:''} · <span style="color:${l.pago?'var(--verde)':'#b8860b'};font-weight:600">${situ}</span></div>${morte?`<div style="margin-top:6px"><button class="btn-fant" style="padding:2px 10px 2px 0;color:var(--verde);font-weight:600" onclick="verAnimal('${l.refId}')">Ver animal ›</button></div>`:`<div style="margin-top:6px">${btnPag}<button class="btn-fant" style="padding:2px 8px;color:var(--verde)" onclick="formLancamento('${l.id}')">✎</button><button class="btn-fant" style="padding:2px 8px;color:var(--perigo)" onclick="excluirLancamento('${l.id}')">✕</button></div>`}</div>`;
     });
-    $t.innerHTML=`${finHead()}${finTabsBar('lancamentos')}<button class="btn" onclick="formLancamento()">+ Novo lançamento</button><div class="fin113-filtros">${chip('todos','Todos')}${chip('receita','Receitas')}${chip('custo','Custos')}${chip('despesa','Despesas')}${chip('investimento','Investimentos')}</div>${itens.length?verMais(itens,'lançamento(s)'):`<div class="vazio"><div class="big">🧾</div><b>Nenhum lançamento</b><div class="meta">Não há itens neste filtro.</div></div>`}`;
+    $t.innerHTML=`${finHead()}${finTabsBar('lancamentos')}<button class="btn" onclick="formLancamento()">+ Novo lançamento</button><div class="fin113-filtros">${chip('todos','Todos')}${chip('receita','Receitas')}${chip('custo','Custos')}${chip('despesa','Despesas')}${chip('investimento','Investimentos')}${chip('compra','Compras')}</div>${itens.length?verMais(itens,'lançamento(s)'):`<div class="vazio"><div class="big">🧾</div><b>Nenhum lançamento</b><div class="meta">Não há itens neste filtro.</div></div>`}`;
   };
 
   window.toggleEstoque113=id=>{const el=document.getElementById(id);if(el)el.classList.toggle('aberta');};
@@ -68,5 +75,45 @@
     await put('insumo_mov',{id:movId,insumoId:id,tipo:'consumo',qtd,unidade:it.unidade||'un',custoUnit,data,obs,criadoEm:Date.now()});
     await put('lancamentos',{id:uid(),tipo:'despesa',natureza:'custo',categoria:custoCategoria(it),valor:qtd*custoUnit,classe:'custo',data,descricao:`Consumo ${it.nome} (${numFmt(qtd)} ${it.unidade||'un'})`,propriedadeId:null,pago:true,origem:'consumo_insumo',refId:movId,criadoEm:Date.now()});
     fechar();telaEstoque();
+  };
+
+  /* V121 — pagamento / recebimento como evento próprio (aceita parcelas) */
+  const FORMAS_PAG=['Pix','Dinheiro','Transferência','Boleto','Cheque','Outro'];
+  window.formPagamentoLanc=async function(id){
+    const l=await get('lancamentos',id);if(!l)return;
+    if(!l.liquidacaoV121&&typeof normalizarLiquidacaoV121==='function')normalizarLiquidacaoV121(l);
+    const rec=l.tipo==='receita',saldo=saldoAberto(l),pags=(l.pagamentos||[]).filter(p=>!p.noAto);
+    const lista=pags.length?pags.slice().sort((a,b)=>(a.data||'').localeCompare(b.data||'')).map(p=>`<div class="row" style="padding:8px 0;border-bottom:1px solid var(--linha)">
+        <div><b>${moeda(Number(p.valor)||0)}</b><div class="meta">${fmt(p.data)}${p.forma?` · ${esc(p.forma)}`:''}${p.obs?` · ${esc(p.obs)}`:''}</div></div>
+        <button class="btn-fant" style="padding:4px 8px;color:var(--perigo)" onclick="excluirPagamentoLanc('${id}','${p.id}')">✕</button></div>`).join(''):'';
+    abrir(`<h2>${rec?'Recebimento':'Pagamento'}</h2>
+      <div class="meta">${esc(l.descricao||l.categoria||'')} · ${fmt(l.data)}</div>
+      <div class="sx-resumo" style="background:#f3f8f4;border-radius:14px;padding:12px 14px;margin:12px 0">
+        <div class="meta">Valor total ${moeda(l.valor||0)} · ${rec?'recebido':'pago'} ${moeda(totalPagoLanc(l))}</div>
+        <b style="font-size:18px;color:${saldo>0.005?'#b8860b':'var(--verde)'}">${saldo>0.005?`Em aberto: ${moeda(saldo)}`:'Quitado'}</b></div>
+      ${lista?`<div class="h3" style="margin:6px 0 2px">${rec?'Recebimentos':'Pagamentos'} registrados</div>${lista}`:''}
+      ${saldo>0.005?`<div class="h3" style="margin:14px 0 2px">Registrar ${rec?'recebimento':'pagamento'}</div>
+        <div class="lado"><div><label>Data</label><input id="pg_data" type="date" value="${hoje()}"></div>
+          <div><label>Valor (R$)</label><input id="pg_valor" inputmode="decimal" value="${String(saldo.toFixed(2)).replace('.',',')}"></div></div>
+        <label>Forma</label><select id="pg_forma">${FORMAS_PAG.map(f=>`<option>${f}</option>`).join('')}</select>
+        <label>Observação (opcional)</label><input id="pg_obs" placeholder="Ex: 1ª parcela, nota 123…">
+        <div class="lado" style="margin-top:18px"><button class="btn btn-sec" onclick="fechar()">Fechar</button><button class="btn" onclick="salvarPagamentoLanc('${id}')">Salvar</button></div>`
+      :`<button class="btn btn-sec" style="margin-top:16px" onclick="fechar()">Fechar</button>`}`);
+  };
+  window.salvarPagamentoLanc=async function(id){
+    const l=await get('lancamentos',id);if(!l)return;
+    const data=val('pg_data')||hoje(),v=numBR('pg_valor'),saldo=saldoAberto(l);
+    if(data>hoje())return alert('A data não pode ser no futuro.');
+    if(v==null||v<=0)return alert('Informe um valor válido.');
+    if(v>saldo+0.009)return alert(`O valor é maior que o saldo em aberto (${moeda(saldo)}).`);
+    l.pagamentos=(l.pagamentos||[]).filter(p=>p.id!=='ato');
+    l.pagamentos.push({id:uid(),data,valor:Math.round(v*100)/100,forma:val('pg_forma'),obs:val('pg_obs'),criadoEm:Date.now()});
+    await put('lancamentos',l);fechar();finLancamentos();
+  };
+  window.excluirPagamentoLanc=async function(id,pid){
+    if(!confirm('Excluir este registro? A partida dele será estornada e o valor volta para "em aberto".'))return;
+    const l=await get('lancamentos',id);if(!l)return;
+    l.pagamentos=(l.pagamentos||[]).filter(p=>p.id!==pid);
+    await put('lancamentos',l);formPagamentoLanc(id);finLancamentos();
   };
 })();

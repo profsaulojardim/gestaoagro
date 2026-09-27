@@ -52,7 +52,8 @@
         <div id="lc_apr_destino_wrap" style="display:none"><label id="lc_apr_destino_label">Destino</label><select id="lc_apr_id"></select></div>
       </div>
       <label>Descrição (opcional)</label><input id="lc_desc" value="${l?esc(l.descricao||''):''}" placeholder="Ex: herbicida, conserto de cerca, nota 123…">
-      <label>Situação</label><select id="lc_pago"><option value="0" ${l&&l.pago?'':'selected'}>Em aberto</option><option value="1" ${l&&l.pago?'selected':''}>Pago / recebido</option></select>
+      ${l&&l.liquidacaoV121?`<div class="meta" style="margin-top:12px">${l.aVista?'Lançado à vista.':'Lançado a prazo.'} Pagamentos e recebimentos são registrados na lista de lançamentos (botão 💵).</div>`
+        :`<label>Forma</label><select id="lc_pago"><option value="1" ${l&&l.pago?'selected':''}>À vista (pago/recebido na data)</option><option value="0" ${l&&!l.pago?'selected':''}>A prazo (fica em aberto)</option></select>`}
       <div class="lado" style="margin-top:18px"><button class="btn btn-sec" onclick="fechar()">Cancelar</button><button class="btn" onclick="salvarLancamento(${l?`'${l.id}'`:''})">Salvar</button></div>`);
     window._finAprSelecionada=l&&l.apropriacaoId||'';
     finTrocaNatureza(false);finAtualizaDestino();
@@ -62,6 +63,8 @@
     if(id){
       const l=await get('lancamentos',id);
       if(l&&(l.origem==='venda_animais'||l.origem==='venda_animal')&&typeof finDetalheVendaAnimais==='function')return finDetalheVendaAnimais(id);
+      if(l&&l.origem==='compra_animal'&&typeof editarCompraAnimalV116==='function')return editarCompraAnimalV116(l.refId);
+      if(l&&l.origem==='morte_animal')return alert('Perda gerada automaticamente pelo registro de morte (custo de estoque do animal). Para corrigir, ajuste o custo do animal ou exclua o evento "Morte" no histórico dele.');
       return abrirFormClassificado(id);
     }
     if(!(await podeUsarApp('Criar lançamento financeiro')))return;
@@ -159,7 +162,7 @@
     const r=await finResumoBase.apply(this,arguments);
     try{
       const ano=_finAno||String(new Date().getFullYear());
-      const ls=(await getAll('lancamentos')).filter(l=>(l.data||'').slice(0,4)===ano&&(!_finProp||l.propriedadeId===_finProp));
+      const ls=(await getAll('lancamentos')).filter(l=>l.tipo!=='partida_contabil'&&(l.data||'').slice(0,4)===ano&&(!_finProp||l.propriedadeId===_finProp));
       const custos=ls.filter(l=>natDe(l)==='custo').reduce((s,l)=>s+(l.valor||0),0);
       const investimentos=ls.filter(l=>natDe(l)==='investimento').reduce((s,l)=>s+(l.valor||0),0);
       const cards=$t.querySelector('.fin-cards');
