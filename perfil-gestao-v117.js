@@ -40,7 +40,7 @@
 
   function atualizarVersao(){
     const v=document.getElementById('app-versao');
-    if(v)v.textContent='Versão 117';
+    if(v&&window.APP_VERSAO)v.textContent='Versão '+window.APP_VERSAO; // V124: não fixa mais "117"
   }
 
   function aplicar(){

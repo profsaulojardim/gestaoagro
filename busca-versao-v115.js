@@ -1,6 +1,9 @@
 /* V116 — busca/filtros no Livro Diário + identificação da versão na página inicial. */
 (()=>{
-  const APP_VERSAO='123';
+  // V124: a versão vem do sw.js (APP_VERSION), que injeta os scripts como arquivo.js?v=NNN.
+  // Assim o número mostrado na tela inicial nunca fica desatualizado.
+  const APP_VERSAO=(()=>{try{const v=new URL(document.currentScript.src).searchParams.get('v');if(v)return v;}catch(_){}return '124';})();
+  window.APP_VERSAO=APP_VERSAO;
   let busca='';
   let tipo='todos';
 
