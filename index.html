@@ -223,9 +223,11 @@
   .manejo-reg .mr-meta{font-size:13px;color:var(--muted);margin-top:3px;line-height:1.4;}
 
   /* ---------- Modal ---------- */
-  .ov{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;display:none;align-items:flex-end;justify-content:center;}
+  .ov{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;display:none;align-items:flex-end;justify-content:center;overscroll-behavior:contain;}
   .ov.on{display:flex;}
-  .modal{background:#fff;width:100%;max-width:660px;border-radius:20px 20px 0 0;padding:20px 18px calc(20px + env(safe-area-inset-bottom));max-height:92vh;overflow-y:auto;animation:sobe .18s ease;}
+  .modal{background:#fff;width:100%;max-width:660px;border-radius:20px 20px 0 0;padding:20px 18px calc(20px + env(safe-area-inset-bottom));max-height:92vh;max-height:92dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y;animation:sobe .18s ease;}
+  /* V135: com uma janela aberta, a página de trás fica presa (funciona mesmo com o overflow !important da V86) */
+  body.modal-aberto{position:fixed!important;left:0;right:0;width:100%;overflow:hidden!important;}
   @keyframes sobe{from{transform:translateY(24px);opacity:.6}to{transform:none;opacity:1}}
   .modal h2{margin:0 0 12px;font-size:18px;color:var(--verde-esc);}
   label{display:block;font-size:13px;color:var(--muted);margin:12px 0 5px;font-weight:600;}
@@ -2595,8 +2597,22 @@ async function salvarMarca(){const s=val("m_sig");if(!s)return alert("Informe a 
 
 /* ======================= FORMULÁRIOS ======================= */
 const $ov=document.getElementById("ov"),$md=document.getElementById("md");
-function abrir(h){$md.innerHTML=h;$ov.classList.add("on");}
-function fechar(){$ov.classList.remove("on");}
+// V135: trava a página de fundo enquanto a janela está aberta (no iPhone o dedo rolava a página de trás)
+let _scrollAntesModal=null;
+function travarFundo(){
+  if(_scrollAntesModal!==null)return;
+  _scrollAntesModal=window.scrollY||document.documentElement.scrollTop||0;
+  document.body.style.top=`-${_scrollAntesModal}px`;
+  document.body.classList.add("modal-aberto");
+}
+function soltarFundo(){
+  if(_scrollAntesModal===null)return;
+  const y=_scrollAntesModal;_scrollAntesModal=null;
+  document.body.classList.remove("modal-aberto");document.body.style.top="";
+  window.scrollTo(0,y);
+}
+function abrir(h){$md.innerHTML=h;$ov.classList.add("on");$md.scrollTop=0;travarFundo();}
+function fechar(){$ov.classList.remove("on");soltarFundo();}
 $ov.onclick=e=>{if(e.target===$ov)fechar();};
 
 async function menuAdicionar(){if(!(await podeUsarApp("Adicionar dados")))return;abrir(`<h2>Adicionar</h2>
