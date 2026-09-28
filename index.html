@@ -547,6 +547,40 @@ async function brincoEmUso(brinco,ignorarAnimalId=null){
   return animais.some(a=>a.id!==ignorarAnimalId&&normalizarBrinco(a.brinco)===chave);
 }
 async function proximoCodigo(){const as=await getAll("animais");return as.reduce((m,a)=>Math.max(m,a.codigo||0),0)+1;}
+// V133: raças — lista fixa + "Outra" com texto livre
+const RACAS=["Nelore","Nelorado","Mestiço"];
+function campoRaca(prefixo,atual,obrigatoria){
+  const outra=!!atual&&!RACAS.includes(atual);
+  const opt=(v,t)=>`<option value="${v}" ${(outra?v==="__outra":v===(atual||""))?"selected":""}>${t}</option>`;
+  return `<label>Raça${obrigatoria?" *":""}</label>
+    <select id="${prefixo}_raca" onchange="toggleRacaOutra('${prefixo}')">
+      ${opt("",obrigatoria?"— selecione —":"— não informada —")}${RACAS.map(r=>opt(r,r)).join("")}${opt("__outra","Outra (especificar)")}</select>
+    <div id="${prefixo}_raca_outra_box" style="display:${outra?"block":"none"}"><label>Qual raça? *</label>
+      <input id="${prefixo}_raca_outra" value="${outra?esc(atual):""}" placeholder="Ex: Angus, Girolando, Tabapuã…"></div>`;
+}
+function toggleRacaOutra(prefixo){
+  const box=document.getElementById(prefixo+"_raca_outra_box");
+  if(box)box.style.display=val(prefixo+"_raca")==="__outra"?"block":"none";
+}
+// retorna a raça escolhida; {erro} se faltar informação
+function lerRaca(prefixo,obrigatoria){
+  const v=val(prefixo+"_raca");
+  if(v==="__outra"){const t=val(prefixo+"_raca_outra").replace(/\s+/g," ");if(!t)return {erro:"Especifique qual é a raça."};return {raca:t};}
+  if(!v&&obrigatoria)return {erro:"Selecione a raça do animal."};
+  return {raca:v};
+}
+// V133: animal sem código (ex.: backup de versão antiga) recebe o próximo número livre, em ordem de cadastro.
+async function numerarSemCodigo(){
+  try{
+    const as=await getAll("animais");
+    const sem=as.filter(a=>!(Number(a.codigo)>0)).sort((x,y)=>(x.criadoEm||0)-(y.criadoEm||0)||String(x.id).localeCompare(String(y.id)));
+    if(!sem.length)return 0;
+    let prox=as.reduce((m,a)=>Math.max(m,Number(a.codigo)||0),0)+1;
+    for(const a of sem){a.codigo=prox++;await put("animais",a);}
+    console.info(`V133: ${sem.length} animal(is) numerado(s) automaticamente.`);
+    return sem.length;
+  }catch(e){console.error("Numeração automática V133:",e);return 0;}
+}
 const numBR=id=>{let v=val(id);if(!v)return null;if(v.includes(','))v=v.replace(/\./g,'').replace(',','.');const n=parseFloat(v);return isNaN(n)?null:n;};
 const moeda=n=>n==null?"—":n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 /* V121 — liquidação: cada lançamento guarda seus pagamentos/recebimentos (l.pagamentos).
@@ -1581,7 +1615,8 @@ function atualizarCriterioFiltroAnimais(){
   }else if(tipo==="sexo"){
     opts=[["F","Fêmea"],["M","Macho"]];
   }else if(tipo==="raca"){
-    opts=[["Nelore","Nelore"],["Mestiço","Mestiço"],["__sem","Raça não informada"]];
+    const outras=[...new Set((_dadosAnimais.animais||[]).map(a=>a.raca).filter(r=>r&&!RACAS.includes(r)))].sort();
+    opts=[...RACAS.map(r=>[r,r]),...outras.map(r=>[r,r]),["__sem","Raça não informada"]];
   }else if(tipo==="status"){
     opts=[["Ativo","Ativo"],["Vendido","Vendido"],["Morto","Morto"]];
   }
@@ -2183,6 +2218,7 @@ async function sincronizarAgora({silencioso=false}={}){
 
     const push=await pushPendentes(org,user,device);
     const pull=await pullCloud(org);
+    await numerarSemCodigo(); // V133: animais antigos que chegaram de outro aparelho
 
     const meta=await garantirSyncMeta();
     meta.last_sync_at=agoraISO();
@@ -3249,7 +3285,7 @@ async function formNovoAnimal(loteFixo,nascimento){
     <label>Brinco / identificação (único)</label><input id="a_brinco" placeholder="Opcional">
     <label>Nome (opcional)</label><input id="a_nome">
     <label>Sexo *</label><select id="a_sexo"><option value="F">Fêmea</option><option value="M">Macho</option></select>
-    <label>Raça *</label><select id="a_raca"><option value="">— selecione —</option><option value="Nelore">Nelore</option><option value="Mestiço">Mestiço</option></select>
+    ${campoRaca("a","",true)}
     ${toggle}
     <div id="grp_nasc" style="display:${nascimento?"block":"none"}">
       <label>Data de nascimento</label><input id="a_nasc" type="date" value="${hoje()}">
@@ -3274,11 +3310,11 @@ async function salvarAnimal(nascimento){
   const marcaId = val("a_marca")||null;
   const brinco = val("a_brinco");
   if(!marcaId)return alert("Selecione a marca / dono do animal.");
-  if(!val("a_raca"))return alert("Selecione a raça do animal.");
+  const _rc=lerRaca("a",true);if(_rc.erro)return alert(_rc.erro);
   if(nasceu&&val("a_nasc")>hoje())return alert("A data de nascimento não pode ser no futuro.");
   if(brinco && await brincoEmUso(brinco))return alert(`Já existe um animal com o brinco / identificação "${brinco}". Cada animal deve ter uma identificação única.`);
   const a={id:uid(),codigo:await proximoCodigo(),
-    brinco,nome:val("a_nome"),sexo:val("a_sexo"),raca:val("a_raca"),
+    brinco,nome:val("a_nome"),sexo:val("a_sexo"),raca:_rc.raca,
     nascidoNaPropriedade:!!nasceu,
     dataNascimento: nasceu ? val("a_nasc") : "",
     pesoCompraKg: nasceu ? null : numBR("a_pesocompra"),
@@ -3400,8 +3436,7 @@ async function formEditarAnimal(id){
     <label>Sexo *</label><select id="e_sexo">
       <option value="F" ${a.sexo==="F"?"selected":""}>Fêmea</option>
       <option value="M" ${a.sexo==="M"?"selected":""}>Macho</option></select>
-    <label>Raça</label><select id="e_raca"><option value="">— não informada —</option>
-      <option value="Nelore" ${a.raca==="Nelore"?"selected":""}>Nelore</option><option value="Mestiço" ${a.raca==="Mestiço"?"selected":""}>Mestiço</option></select>
+    ${campoRaca("e",a.raca||"",false)}
     <label>Nasceu na propriedade?</label>
     <select id="e_nasceu" onchange="toggleOrigemEdit()">
       <option value="sim" ${nasceu?"selected":""}>Sim — nasceu aqui</option>
@@ -3432,7 +3467,8 @@ async function salvarEdicaoAnimal(id){
   a.brinco=brinco;
   a.nome=val("e_nome");
   a.sexo=val("e_sexo");
-  a.raca=val("e_raca");
+  const _rc=lerRaca("e",false);if(_rc.erro)return alert(_rc.erro);
+  a.raca=_rc.raca;
   a.nascidoNaPropriedade=nasceu;
   a.dataNascimento = nasceu ? val("e_nasc") : "";
   a.pesoCompraKg = nasceu ? null : numBR("e_pesocompra");
@@ -4126,6 +4162,7 @@ async function restaurarDadosBackup(d,pedirConfirmacao=true){
       await putRaw(s,it);
     }
   }
+  await numerarSemCodigo(); // V133
   return true;
 }
 function importar(inp){const f=inp.files[0];if(!f)return;const r=new FileReader();
@@ -4139,6 +4176,7 @@ function importar(inp){const f=inp.files[0];if(!f)return;const r=new FileReader(
 abrirDB().then(async()=>{
   // V60: primeiro abre a interface usando o IndexedDB local.
   // Supabase/sincronização rodam depois e nunca podem deixar a tela em branco.
+  await numerarSemCodigo(); // V133
   await renderSeguro();
   checarNotificacoes();
   iniciarSyncEmSegundoPlano();
