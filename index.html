@@ -245,6 +245,15 @@
   nav button{flex:1;background:none;color:var(--muted);font-size:10px;font-weight:600;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-align:center;line-height:1.08;padding:3px 2px;}
   nav button>span:last-child{max-width:86px;}
   nav button .ic{font-size:21px;line-height:1;} nav button.ativo{color:var(--verde);}
+  /* V136: ícones de traço (SVG) — Opção B: pílula verde clara no item ativo */
+  nav button .ic{display:flex;align-items:center;justify-content:center;width:58px;height:30px;border-radius:15px;transition:background .15s;}
+  nav button.ativo .ic{background:var(--verde-lite);}
+  nav button{font-size:11px;gap:4px;}
+  svg.ico{width:24px;height:24px;display:block;flex:none;}
+  .mod .mic svg.ico{width:24px;height:24px;}
+  .fintabs button .fi svg.ico{width:20px;height:20px;}
+  .sechead .sic svg.ico{width:22px;height:22px;}
+  .submod{display:flex;align-items:center;gap:7px;} .submod svg.ico{width:18px;height:18px;color:var(--verde);}
   .tile img{width:46px;height:46px;object-fit:contain;display:block;}
   .mic img{width:38px;height:38px;object-fit:contain;display:block;}
   nav .ic img{width:28px;height:24px;object-fit:contain;display:inline-block;vertical-align:middle;}
@@ -298,10 +307,10 @@
 <main id="tela"></main>
 
 <nav>
-  <button data-aba="inicio" class="ativo"><span class="ic">⌂</span><span>Início</span></button>
-  <button data-aba="painel"><span class="ic"><img src="boi.png" alt=""></span><span>Gestão Operacional</span></button>
-  <button data-aba="financeiro"><span class="ic">💰</span><span>Gestão Financeira</span></button>
-  <button data-aba="perfil"><span class="ic">◔</span><span>Perfil</span></button>
+  <button data-aba="inicio" class="ativo"><span class="ic" data-ico="casa"></span><span>Início</span></button>
+  <button data-aba="painel"><span class="ic" data-ico="boi"></span><span>Operacional</span></button>
+  <button data-aba="financeiro"><span class="ic" data-ico="carteira"></span><span>Financeiro</span></button>
+  <button data-aba="perfil"><span class="ic" data-ico="pessoa"></span><span>Perfil</span></button>
 </nav>
 
 <div class="ov" id="ov"><div class="modal" id="md"></div></div>
@@ -657,6 +666,42 @@ async function moverAnimal(id,novoLote){
   a.loteAtualId=novoLote;await put("animais",a);
   await registrarEvento(id,"Movimentação",hoje(),`De "${de?de.nome:"—"}" para "${para?para.nome:"—"}"`);
 }
+
+/* ======================= ÍCONES (V136) ======================= */
+/* Conjunto único de ícones de traço, desenhados aqui (não dependem de emoji do aparelho). */
+const ICONES={
+  casa:'<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h5v-6h4v6h5V9.5"/>',
+  boi:'<path d="M3 5c.5 3 2.5 4.5 5.5 4.5M21 5c-.5 3-2.5 4.5-5.5 4.5"/><path d="M8.5 9.5h7l-.8 7.2a2.8 2.8 0 0 1-2.7 2.3 2.8 2.8 0 0 1-2.7-2.3z"/><path d="M8.5 11 5.5 12M15.5 11l3 1"/><circle cx="10.8" cy="16.6" r=".5" fill="currentColor"/><circle cx="13.2" cy="16.6" r=".5" fill="currentColor"/>',
+  carteira:'<path d="M4 7h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M4 7l11-3v3"/><path d="M20 12h-4a1.5 1.5 0 0 0 0 3h4"/>',
+  pessoa:'<circle cx="12" cy="8" r="4"/><path d="M4.5 20.5c1.2-3.8 4.2-5.5 7.5-5.5s6.3 1.7 7.5 5.5"/>',
+  pessoas:'<circle cx="9" cy="8" r="3.3"/><path d="M2.8 19.5c.9-3.2 3.3-4.7 6.2-4.7s5.3 1.5 6.2 4.7"/><path d="M15.5 4.9a3.3 3.3 0 0 1 0 6.3M17.6 14.9c1.8.6 3 2 3.6 4.6"/>',
+  etiqueta:'<path d="M3.5 12.5V5a1.5 1.5 0 0 1 1.5-1.5h7.5l8 8-9 9-8-8z"/><circle cx="8" cy="8" r="1.4"/>',
+  seringa:'<path d="m18 2 4 4M20 4l-4.5 4.5M17 7l-9.5 9.5-3-3L14 4M9.5 7.5l2 2M7 10l2 2M4.5 13.5l-2.5 2.5v2h2l2.5-2.5"/>',
+  cerca:'<path d="M5 20V6l1.5-2L8 6v14M12 20V6l1.5-2L15 6v14M19 20V6"/><path d="M2 9h20M2 15h20"/>',
+  pasto:'<path d="M3 20h18"/><path d="M7 20c0-4-2-7-4-8M7 20c0-5 2-9 5-10M12 20c0-6 1-10 4-12M17 20c0-4 2-6 4-7"/>',
+  caixa:'<path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/>',
+  sino:'<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>',
+  calc:'<rect x="5" y="2.5" width="14" height="19" rx="2"/><path d="M8 6.5h8M8.5 11h.01M12 11h.01M15.5 11h.01M8.5 14.5h.01M12 14.5h.01M15.5 14.5h.01M8.5 18h.01M12 18h.01M15.5 18h.01"/>',
+  grafico:'<path d="M3 20h18M6 16v-4M11 16V8M16 16v-6M21 16V5"/>',
+  lapis:'<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',
+  doc:'<path d="M6 2.5h8l5 5V20a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 20V4"/><path d="M14 2.5v5h5M9 13h6M9 17h4"/>',
+  engr:'<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/>',
+  grade:'<rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/>',
+  setas:'<path d="M4 8h14M14 4l4 4-4 4"/><path d="M20 16H6M10 12l-4 4 4 4"/>',
+  ferro:'<path d="M3 21l8-8"/><rect x="11" y="4" width="9" height="9" rx="1.5" transform="rotate(45 15.5 8.5)"/><path d="M13.5 8.5h4"/>',
+  tesoura:'<circle cx="6" cy="6.5" r="2.8"/><circle cx="6" cy="17.5" r="2.8"/><path d="M8.3 8.2 20 18M8.3 15.8 20 6"/>',
+  livro:'<path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H19v15H5.5A1.5 1.5 0 0 0 4 19.5z"/><path d="M4 19.5A1.5 1.5 0 0 0 5.5 21H19v-3M8 7h7"/>',
+  celular:'<rect x="6.5" y="2.5" width="11" height="19" rx="2.2"/><path d="M11 18h2"/>'
+};
+function ico(n){const d=ICONES[n];return d?`<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`:"";}
+/* Títulos de seção criados por vários arquivos ainda usam emoji: troca pelo ícone equivalente. */
+const ICONE_DE_EMOJI={"🏠":"casa","▦":"grade","🌱":"pasto","🔔":"sino","💰":"carteira","📦":"caixa","👥":"pessoas","☑":"seringa","🗂":"doc","💊":"seringa","↷":"setas","↩️":"etiqueta","🧮":"calc","📒":"livro","📲":"celular","🍼":"boi"};
+function aplicarIcones(raiz){
+  (raiz||document).querySelectorAll("[data-ico]:not([data-ico-ok])").forEach(el=>{el.innerHTML=ico(el.dataset.ico);el.setAttribute("data-ico-ok","1");});
+  (raiz||document).querySelectorAll(".sechead .sic").forEach(el=>{const n=ICONE_DE_EMOJI[el.textContent.trim()];if(n)el.innerHTML=ico(n);});
+}
+new MutationObserver(()=>aplicarIcones(document.getElementById("tela"))).observe(document.getElementById("tela"),{childList:true,subtree:true});
+aplicarIcones(document);
 
 /* ======================= NAV ======================= */
 const $t=document.getElementById("tela"); let aba="inicio"; let _perfilFoto=""; let _animalFoto=""; let _editPastos=false; let _editNasc=false; let _finAno=null; let _finProp=""; let _finFiltro="todos"; let _lembreteOculto=false;
@@ -1093,22 +1138,22 @@ async function telaPainel(){
     ${props}
 
     <div class="sechead" style="margin-top:22px"><span class="sic">▦</span><h2>Módulos do sistema</h2></div>
-    <div class="submod">🐄 Rebanho</div>
+    <div class="submod">${ico("boi")}Rebanho</div>
     <div class="grid">
-      ${mod('<img src="boi.png" alt="">',"Animais","Cadastro, nascimentos, desmama, consulta e histórico.","abrirAnimaisOperacional()")}
-      ${mod("↩️","Venda / Morte de Animal","Venda individual, múltipla, por lote ou grupo e registro de morte.","telaVendaMorteAnimal()")}
+      ${mod(ico("boi"),"Animais","Cadastro, nascimentos, desmama, consulta e histórico.","abrirAnimaisOperacional()")}
+      ${mod(ico("etiqueta"),"Venda / Morte de Animal","Venda individual, múltipla, por lote ou grupo e registro de morte.","telaVendaMorteAnimal()")}
     </div>
-    <div class="submod">🌱 Manejo & Áreas</div>
+    <div class="submod">${ico("pasto")}Manejo & Áreas</div>
     <div class="grid">
-      ${mod("☑","Eventos de Manejo","Marcar, medicar ou trocar de lote.","telaManejo()")}
-      ${mod("▤","Lotes","Organização dos animais por lote.","abrirLotesOperacional()")}
-      ${mod("🌱","Gestão de Pastos","Pastos, capim, área e situação.","telaGestaoPasto()")}
+      ${mod(ico("seringa"),"Eventos de Manejo","Marcar, medicar ou trocar de lote.","telaManejo()")}
+      ${mod(ico("cerca"),"Lotes","Organização dos animais por lote.","abrirLotesOperacional()")}
+      ${mod(ico("pasto"),"Gestão de Pastos","Pastos, capim, área e situação.","telaGestaoPasto()")}
     </div>
-    <div class="submod">📦 Recursos & Alertas</div>
+    <div class="submod">${ico("caixa")}Recursos & Alertas</div>
     <div class="grid">
-      ${mod("📦","Estoque de Insumos","Medicamentos, sal, e itens de manutenção.","telaEstoque()")}
-      ${mod("🔔","Avisos","Eventos, manejos e alertas que exigem atenção.","telaAvisos()")}
-      ${mod("🧮","Calculadora da Pecuária","Ferramentas para cálculos de negociações e indicadores.","telaCalculadoraPecuaria()")}
+      ${mod(ico("caixa"),"Estoque de Insumos","Medicamentos, sal, e itens de manutenção.","telaEstoque()")}
+      ${mod(ico("sino"),"Avisos","Eventos, manejos e alertas que exigem atenção.","telaAvisos()")}
+      ${mod(ico("calc"),"Calculadora da Pecuária","Ferramentas para cálculos de negociações e indicadores.","telaCalculadoraPecuaria()")}
     </div>
 `;
 }
@@ -2659,7 +2704,7 @@ async function menuFinanceiro(){
 /* ======================= GESTÃO FINANCEIRA ======================= */
 function finHead(){return `<button class="voltar" onclick="irAba('inicio')">‹ Início</button>
   <div class="sechead"><span class="sic">💰</span><h2>Gestão Financeira</h2></div>`;}
-function finTabsBar(a){const t=[["resumo","📊","Resumo","finResumo()"],["lancamentos","✏️","Lançar","finLancamentos()"],["relatorios","📈","Relatórios","finRelatorios()"],["config","⚙️","Config","finConfig()"]];
+function finTabsBar(a){const t=[["resumo",ico("grafico"),"Resumo","finResumo()"],["lancamentos",ico("lapis"),"Lançar","finLancamentos()"],["relatorios",ico("doc"),"Relatórios","finRelatorios()"],["config",ico("engr"),"Config","finConfig()"]];
   return `<div class="fintabs">${t.map(([k,ic,l,fn])=>`<button class="${a===k?'on':''}" onclick="${fn}"><span class="fi">${ic}</span>${l}</button>`).join("")}</div>`;}
 
 async function finResumo(){
@@ -3667,10 +3712,10 @@ async function telaManejo(){
     <div class="sechead"><span class="sic">☑</span><h2>Manejo</h2></div>
     <div class="meta" style="margin:0 4px 14px">Escolha a ação e depois selecione em quais animais ela será registrada.</div>
     <div class="mod-list">
-    ${mod("🔥","Marcar animais","Registrar marcação (ferro).","formManejo('Marcação')")}
-    ${mod("💊","Medicamento aplicado","Vacinas, injeção, pour on, spray, brinco, ingestão…","telaMedicamentosManejo()")}
-    ${mod("↷","Trocar de lote","Selecione vários animais e mova todos de uma vez.","telaTrocaLote()")}
-    ${mod("✂️","Outros","Castração e outros eventos de manejo.","formManejo('Outros')")}
+    ${mod(ico("ferro"),"Marcar animais","Registrar marcação (ferro).","formManejo('Marcação')")}
+    ${mod(ico("seringa"),"Medicamento aplicado","Vacinas, injeção, pour on, spray, brinco, ingestão…","telaMedicamentosManejo()")}
+    ${mod(ico("setas"),"Trocar de lote","Selecione vários animais e mova todos de uma vez.","telaTrocaLote()")}
+    ${mod(ico("tesoura"),"Outros","Castração e outros eventos de manejo.","formManejo('Outros')")}
     </div>
     <div class="manejo-hist">
       <div class="sechead"><span class="sic">🗂</span><h2>Histórico de manejo</h2></div>
