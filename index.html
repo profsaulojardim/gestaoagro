@@ -153,6 +153,7 @@
   .ti{font-weight:600;font-size:16px;} .meta{color:var(--muted);font-size:13px;margin-top:2px;}
   .badge{background:var(--verde);color:#fff;font-size:13px;font-weight:600;border-radius:20px;padding:3px 11px;white-space:nowrap;}
   .chip{display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;padding:3px 9px;border-radius:20px;margin-right:4px;line-height:1;vertical-align:middle;}
+  .chips-linha{display:flex;flex-wrap:wrap;align-items:center;gap:6px;} .chips-linha .chip{margin:0;} /* V138: espaço entre as etiquetas, inclusive quando quebram linha */
   .chip-lote{background:var(--verde-lite);color:var(--verde-esc);}
   .chip-f{background:#fbe9ef;color:#a13a63;} .chip-m{background:#e6eef6;color:#2f6fa8;}
   .chip-off{background:#eee;color:#777;} .chip-marca{background:#fff4d6;color:#8a6a12;}
@@ -1240,7 +1241,7 @@ async function telaNascimentosAntiga(){
       </div>`:"";
     return `<div class="card rt" onclick="verAnimal('${a.id}')">
       <div class="row"><div class="ti">${esc(rotulo(a))} ${(a.brinco||a.nome)?`<span class="chip chip-id">${codAnimal(a)}</span>`:""}</div>${ctrl}</div>
-      <div class="meta" style="margin-top:6px">${sexoChip(a.sexo)}<span class="chip chip-lote">▦ ${esc(nomeLote(a.loteAtualId))}</span></div>
+      <div class="meta chips-linha" style="margin-top:8px">${sexoChip(a.sexo)}<span class="chip chip-lote">▦ ${esc(nomeLote(a.loteAtualId))}</span></div>
       <div class="meta" style="margin-top:6px">Mãe: <b>${a.maeId?esc(rotMae(a.maeId)):"—"}</b> · Nascimento: ${a.dataNascimento?fmt(a.dataNascimento):"—"}</div>
       ${linhaDesmama}${ctrlDesmama}</div>`;
   });
@@ -1819,7 +1820,7 @@ function linhaAnimal(a,nomeLote,mostraLote){
       ${animalThumb(a,46)}
       <div style="flex:1;min-width:0">
         <div class="ti">${esc(rotulo(a))}${a.brinco&&a.nome?` · ${esc(a.nome)}`:""}${origemTag(a)}</div>
-        <div class="meta" style="margin-top:6px">${sx}${st}${idchip}${mostraLote?`<span class="chip chip-lote">▦ ${esc(nomeLote)}</span>`:""}
+        <div class="meta chips-linha" style="margin-top:8px">${sx}${st}${idchip}${mostraLote?`<span class="chip chip-lote">▦ ${esc(nomeLote)}</span>`:""}
           ${a._marcaSigla?`<span class="chip chip-marca">${esc(a._marcaSigla)}</span>`:""}</div>
         ${a.nascidoNaPropriedade===true?`<div class="meta" style="margin-top:6px">Mãe: <b>${esc(maeTexto(a))}</b></div>`:""}
         ${desmamaLinhaLista(a)}
@@ -1855,7 +1856,7 @@ async function verAnimal(id){
         <div class="an-thumb" style="width:84px;height:84px;font-size:34px${a.foto?';cursor:zoom-in':''}" ${a.foto?`onclick="ampliarFotoAnimal('${id}')"`:""}>${a.foto?`<img src="${esc(a.foto)}" alt="">`:"🐄"}</div>
         <div style="flex:1;min-width:0">
           <div class="ti" style="font-size:20px">${esc(rotulo(a))}${a.brinco&&a.nome?` · ${esc(a.nome)}`:""} ${(a.brinco||a.nome)?`<span class="chip chip-id">${codAnimal(a)}</span>`:""}${origemTag(a)}</div>
-          <div class="meta" style="margin-top:6px">
+          <div class="meta chips-linha" style="margin-top:8px">
             ${sexoChip(a.sexo)}
             <span class="chip chip-lote">▦ ${esc(nomeLote)}</span>
             ${marca?`<span class="chip chip-marca">${esc(marca.sigla)}</span>`:""}
