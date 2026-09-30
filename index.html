@@ -253,6 +253,7 @@
   .mod .mic svg.ico{width:24px;height:24px;}
   .fintabs button .fi svg.ico{width:20px;height:20px;}
   .sechead .sic svg.ico{width:22px;height:22px;}
+  .sheet-item .si{display:flex;align-items:center;justify-content:center;} .sheet-item .si svg.ico{width:22px;height:22px;}
   .submod{display:flex;align-items:center;gap:7px;} .submod svg.ico{width:18px;height:18px;color:var(--verde);}
   .tile img{width:46px;height:46px;object-fit:contain;display:block;}
   .mic img{width:38px;height:38px;object-fit:contain;display:block;}
@@ -691,16 +692,18 @@ const ICONES={
   ferro:'<path d="M3 21l8-8"/><rect x="11" y="4" width="9" height="9" rx="1.5" transform="rotate(45 15.5 8.5)"/><path d="M13.5 8.5h4"/>',
   tesoura:'<circle cx="6" cy="6.5" r="2.8"/><circle cx="6" cy="17.5" r="2.8"/><path d="M8.3 8.2 20 18M8.3 15.8 20 6"/>',
   livro:'<path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H19v15H5.5A1.5 1.5 0 0 0 4 19.5z"/><path d="M4 19.5A1.5 1.5 0 0 0 5.5 21H19v-3M8 7h7"/>',
-  celular:'<rect x="6.5" y="2.5" width="11" height="19" rx="2.2"/><path d="M11 18h2"/>'
+  celular:'<rect x="6.5" y="2.5" width="11" height="19" rx="2.2"/><path d="M11 18h2"/>',
+  info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.5h.01"/>',
+  cadeado:'<rect x="4.5" y="10.5" width="15" height="10.5" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3M12 14.5v2.5"/>'
 };
 function ico(n){const d=ICONES[n];return d?`<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`:"";}
 /* Títulos de seção criados por vários arquivos ainda usam emoji: troca pelo ícone equivalente. */
-const ICONE_DE_EMOJI={"🏠":"casa","▦":"grade","🌱":"pasto","🔔":"sino","💰":"carteira","📦":"caixa","👥":"pessoas","☑":"seringa","🗂":"doc","💊":"seringa","↷":"setas","↩️":"etiqueta","🧮":"calc","📒":"livro","📲":"celular","🍼":"boi"};
+const ICONE_DE_EMOJI={"⌂":"casa","🏡":"casa","🐄":"boi","💾":"pessoa","ℹ️":"info","ℹ":"info","🔐":"cadeado","↩":"etiqueta","🏷️":"ferro","🏷":"ferro","▤":"cerca","🏠":"casa","▦":"grade","🌱":"pasto","🔔":"sino","💰":"carteira","📦":"caixa","👥":"pessoas","☑":"seringa","🗂":"doc","💊":"seringa","↷":"setas","↩️":"etiqueta","🧮":"calc","📒":"livro","📲":"celular","🍼":"boi"};
 function aplicarIcones(raiz){
   (raiz||document).querySelectorAll("[data-ico]:not([data-ico-ok])").forEach(el=>{el.innerHTML=ico(el.dataset.ico);el.setAttribute("data-ico-ok","1");});
-  (raiz||document).querySelectorAll(".sechead .sic").forEach(el=>{const n=ICONE_DE_EMOJI[el.textContent.trim()];if(n)el.innerHTML=ico(n);});
+  (raiz||document).querySelectorAll(".sechead .sic,.sheet-item .si").forEach(el=>{const n=ICONE_DE_EMOJI[el.textContent.trim()];if(n)el.innerHTML=ico(n);});
 }
-new MutationObserver(()=>aplicarIcones(document.getElementById("tela"))).observe(document.getElementById("tela"),{childList:true,subtree:true});
+["tela","md"].forEach(id=>{const el=document.getElementById(id);new MutationObserver(()=>aplicarIcones(el)).observe(el,{childList:true,subtree:true});});
 aplicarIcones(document);
 
 /* ======================= NAV ======================= */
