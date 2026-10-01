@@ -3395,7 +3395,7 @@ async function formNovoAnimal(loteFixo,nascimento){
     return;
   }
   if(lotes.length===0){fechar();return alert("Crie um lote primeiro.");}
-  const optLotes=lotes.map(l=>{const p=propriedades.find(x=>x.id===l.propriedadeId);
+  const optLotes=`<option value="" ${loteFixo?"":"selected"}>— selecione —</option>`+lotes.map(l=>{const p=propriedades.find(x=>x.id===l.propriedadeId);
     return`<option value="${l.id}" ${l.id===loteFixo?"selected":""}>${esc(l.nome)}${p?` — ${esc(p.nome)}`:""}</option>`;}).join("");
   const femeas=animais.filter(a=>a.sexo==="F").sort((x,y)=>(x.codigo||0)-(y.codigo||0));
   const optMae=`<option value="">— nenhuma —</option>`+
@@ -3446,6 +3446,7 @@ async function salvarAnimal(nascimento){
   const marcaId = val("a_marca")||null;
   const brinco = val("a_brinco");
   if(!marcaId)return alert("Selecione a marca / dono do animal.");
+  if(!val("a_lote"))return alert("Selecione o lote do animal.");
   const _rc=lerRaca("a",true);if(_rc.erro)return alert(_rc.erro);
   if(nasceu&&val("a_nasc")>hoje())return alert("A data de nascimento não pode ser no futuro.");
   if(brinco && await brincoEmUso(brinco))return alert(`Já existe um animal com o brinco / identificação "${brinco}". Cada animal deve ter uma identificação única.`);
@@ -3658,12 +3659,12 @@ async function formMover(id){
   if(!(await podeUsarApp("Mover animal de lote")))return;const a=await get("animais",id);
   const {propriedades,lotes}=await tudo();const outros=lotes.filter(l=>l.id!==a.loteAtualId);
   if(!outros.length)return alert("Não há outro lote.");
-  const opt=outros.map(l=>{const p=propriedades.find(x=>x.id===l.propriedadeId);
+  const opt=`<option value="">— selecione —</option>`+outros.map(l=>{const p=propriedades.find(x=>x.id===l.propriedadeId);
     return`<option value="${l.id}">${esc(l.nome)}${p?` — ${esc(p.nome)}`:""}</option>`;}).join("");
   abrir(`<h2>Mover de lote</h2><label>Novo lote</label><select id="mv_lote">${opt}</select>
     <div class="lado" style="margin-top:18px"><button class="btn btn-sec" onclick="fechar()">Cancelar</button>
       <button class="btn" onclick="confMover('${id}')">Mover</button></div>`);}
-async function confMover(id){await moverAnimal(id,val("mv_lote"));fechar();verAnimal(id);}
+async function confMover(id){if(!val("mv_lote"))return alert("Selecione o novo lote.");await moverAnimal(id,val("mv_lote"));fechar();verAnimal(id);}
 
 /* ======================= MANEJO ======================= */
 async function telaManejo(){
@@ -3737,7 +3738,7 @@ async function telaMedicamentosManejo(){
   const ativos=animais.filter(a=>a.status==="Ativo").sort((x,y)=>(x.codigo||0)-(y.codigo||0));
   const nomeLote=id=>(lotes.find(l=>l.id===id)||{}).nome||"—";
   const optAnimais=ativos.map(a=>`<option value="${a.id}">${esc(rotuloCod(a))} — ${esc(nomeLote(a.loteAtualId))}</option>`).join("");
-  const optLotes=lotes.map(l=>{const p=propriedades.find(x=>x.id===l.propriedadeId);return `<option value="${l.id}">${esc(l.nome)}${p?` — ${esc(p.nome)}`:""}</option>`;}).join("");
+  const optLotes=lotes.length?`<option value="">— selecione —</option>`+lotes.map(l=>{const p=propriedades.find(x=>x.id===l.propriedadeId);return `<option value="${l.id}">${esc(l.nome)}${p?` — ${esc(p.nome)}`:""}</option>`;}).join(""):"";
   const optMed=medicamentos.map(m=>`<option value="${m.id}">${esc(m.nome)}${m.marca?` · ${esc(m.marca)}`:""}</option>`).join("");
   const listaMeds=medicamentos.map(m=>`<div class="sheet-item" style="padding-left:0;padding-right:0">
     <span class="si">💊</span><div style="flex:1"><b>${esc(m.nome)}</b>${m.marca?` · ${esc(m.marca)}`:""}
@@ -3939,7 +3940,7 @@ async function formManejo(tipo){
   const ativos=animais.filter(a=>a.status==="Ativo").sort((x,y)=>(x.codigo||0)-(y.codigo||0));
   const nomeLote=id=>(lotes.find(l=>l.id===id)||{}).nome||"—";
   const optAnimais=ativos.map(a=>`<option value="${a.id}">${esc(rotuloCod(a))} — ${esc(nomeLote(a.loteAtualId))}</option>`).join("");
-  const optLotes=lotes.map(l=>{const p=propriedades.find(x=>x.id===l.propriedadeId);return`<option value="${l.id}">${esc(l.nome)}${p?` — ${esc(p.nome)}`:""}</option>`;}).join("");
+  const optLotes=`<option value="">— selecione —</option>`+lotes.map(l=>{const p=propriedades.find(x=>x.id===l.propriedadeId);return`<option value="${l.id}">${esc(l.nome)}${p?` — ${esc(p.nome)}`:""}</option>`;}).join("");
 
   const ativosIds=new Set(ativos.map(a=>a.id));
   const qtdGrupo=gid=>new Set(grupo_animais.filter(v=>v.grupoId===gid&&ativosIds.has(v.animalId)).map(v=>v.animalId)).size;
@@ -4044,12 +4045,14 @@ async function salvarManejo(tipo){
     if(!lista.length)return alert("Esse grupo não tem animais ativos.");
   }else{
     const loteId=(document.getElementById("mj_lote")||{}).value;
+    if(!loteId)return alert("Selecione o lote.");
     lista=todos.filter(a=>a.loteAtualId===loteId&&a.status==="Ativo").map(a=>a.id);
     if(!lista.length)return alert("Esse lote não tem animais ativos.");
   }
   let n=0;
   if(tipo==="Movimentação"){
     const destino=val("mj_destino");
+    if(!destino)return alert("Selecione o lote de destino.");
     const lotes=await getAll("lotes");
     const nomeLote=id=>(lotes.find(l=>l.id===id)||{}).nome||"—";
     const nomeDest=nomeLote(destino);
