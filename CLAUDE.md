@@ -24,6 +24,8 @@ Dados: IndexedDB local + sincronização Supabase (tabela `sync_records`; novos 
   lançamentos deve filtrá-los.
 - Não criar store nova no IndexedDB para sincronizar (o Supabase tem CHECK de `store_name`).
 - Datas de fatos (compra, nascimento, pagamento, desmama) não podem ser no futuro.
+- Medicamentos/vacinas (V142) são itens da store `insumos` (grupo "gado", categorias em `CAT_MED_ESTOQUE`).
+  A store `medicamentos` é legada: só é lida pela migração `migrarMedicamentosParaEstoque()`; não gravar nela.
 
 ## Recursos desativados
 - O módulo **Engorda e pesagens** foi desativado a pedido do dono na V129 (quer o app mais simples).
