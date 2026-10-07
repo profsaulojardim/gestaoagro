@@ -298,17 +298,25 @@
   .atalho:active{transform:scale(.97);}
   .atalho .at-ic{width:42px;height:42px;border-radius:50%;background:var(--verde-lite);color:var(--verde);display:flex;align-items:center;justify-content:center;}
   .atalho .at-ic svg.ico{width:22px;height:22px;}
-  .reb-total{display:flex;align-items:baseline;gap:8px;} .reb-total b{font-size:34px;line-height:1;color:var(--verde-esc);font-weight:800;}
-  .reb-total span{color:var(--muted);font-size:14px;}
-  .reb-grupo{margin-top:14px;} .reb-grupo:first-of-type{margin-top:12px;}
-  .reb-tit{font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;}
-  .reb-lin{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--linha);}
+  /* V143: Rebanho hoje com abas */
+  .reb-card{padding:16px 16px 6px;cursor:default;}
+  .reb-total{display:flex;align-items:center;gap:14px;margin-bottom:14px;}
+  .reb-total b{font-size:44px;line-height:1;color:var(--verde);font-weight:800;letter-spacing:-1px;}
+  .reb-total .rt1{font-weight:800;color:var(--verde-esc);font-size:16px;} .reb-total .rt2{color:var(--muted);font-size:13px;margin-top:2px;}
+  .reb-abas{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:var(--verde-lite);border-radius:14px;padding:4px;margin-bottom:6px;}
+  .reb-abas button{border:none;background:none;border-radius:11px;padding:9px 4px;font-size:13.5px;font-weight:700;color:var(--verde-esc);cursor:pointer;}
+  .reb-abas button.on{background:var(--verde);color:#fff;box-shadow:0 1px 4px rgba(20,60,35,.18);}
+  .reb-lista{display:none;} .reb-lista.on{display:block;}
+  .reb-lin{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--linha);}
   .reb-lin:last-child{border-bottom:none;} .reb-lin.rt{cursor:pointer;}
-  .reb-nome{font-size:14.5px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  .reb-nome small{color:var(--muted);font-weight:500;}
-  .reb-n{font-weight:800;color:var(--verde-esc);font-size:15px;}
-  .reb-bar{grid-column:1/-1;height:5px;border-radius:3px;background:var(--verde-lite);overflow:hidden;}
-  .reb-bar i{display:block;height:100%;background:var(--verde);border-radius:3px;}
+  .reb-txt{flex:1;min-width:0;} .reb-nome{font-size:15px;font-weight:700;color:var(--texto,#1c2b20);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .reb-sub{font-size:12.5px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .reb-n{font-weight:800;color:var(--verde-esc);font-size:19px;}
+  .reb-chev{color:var(--verde);font-size:15px;width:14px;text-align:center;transition:transform .15s;}
+  .reb-lin.aberto .reb-chev{transform:rotate(180deg);}
+  .reb-det{display:none;padding:0 0 10px 12px;border-bottom:1px solid var(--linha);} .reb-det.on{display:block;}
+  .reb-det .rd{display:flex;justify-content:space-between;padding:6px 0;font-size:13.5px;cursor:pointer;} .reb-det .rd b{color:var(--verde-esc);}
+  .reb-det .rd span{color:var(--muted);}
   .fin-home{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
   .fin-home .fh{background:#fff;border-radius:14px;box-shadow:var(--sombra);padding:11px 12px;cursor:pointer;}
   .fin-home .fh .l{font-size:12px;color:var(--muted);} .fin-home .fh .v{font-size:17px;font-weight:800;margin-top:3px;color:var(--verde-esc);}
@@ -1074,20 +1082,38 @@ async function telaInicio(){
 
   // V141: valor do rebanho (custo de estoque dos ativos) — mesma regra do Financeiro › Resumo
   const valorRebanho=ativos.reduce((s,a)=>s+(a.custoEstoque||0),0);
-  // V141: rebanho hoje por dono, propriedade e lote
+  // V143: rebanho hoje por propriedade, dono e lote (em abas)
   const {marcas}=await tudo();
   const loteDe=id=>lotes.find(l=>l.id===id);
-  const contar=(fn)=>{const m=new Map();for(const a of ativos){const k=fn(a);m.set(k,(m.get(k)||0)+1);}return m;};
+  const propDe=a=>{const l=loteDe(a.loteAtualId);return l&&propriedades.find(p=>p.id===l.propriedadeId)?l.propriedadeId:"__sem";};
+  const contar=(lista,fn)=>{const m=new Map();for(const a of lista){const k=fn(a);m.set(k,(m.get(k)||0)+1);}return m;};
   const ordenar=arr=>arr.filter(x=>x.n>0).sort((x,y)=>y.n-x.n||String(x.nome).localeCompare(String(y.nome)));
-  const cDono=contar(a=>a.marcaId&&marcas.find(m=>m.id===a.marcaId)?a.marcaId:"__sem");
-  const porDono=ordenar([...marcas.map(m=>({nome:esc(m.sigla||m.nome||"Marca")+(m.nome&&m.sigla?` <small>· ${esc(m.nome)}</small>`:""),n:cDono.get(m.id)||0,onclick:`abrirAnimaisFiltro('marca','${m.id}')`})),
+  const linha=x=>`<div class="reb-lin${x.onclick?" rt":""}" ${x.onclick?`onclick="${x.onclick}"`:""}><div class="reb-txt"><div class="reb-nome">${x.nome}</div>${x.sub?`<div class="reb-sub">${x.sub}</div>`:""}</div><div class="reb-n">${x.n}</div>${x.chev?`<span class="reb-chev">⌄</span>`:""}</div>${x.det||""}`;
+  // propriedades (tocar abre os lotes da propriedade)
+  const cProp=contar(ativos,propDe);
+  const porProp=ordenar([...propriedades.map(p=>({id:p.id,nome:esc(p.nome),n:cProp.get(p.id)||0})),{id:"__sem",nome:"Sem propriedade",n:cProp.get("__sem")||0}]).map((x,k)=>{
+    const daProp=ativos.filter(a=>propDe(a)===x.id);
+    const cl=contar(daProp,a=>loteDe(a.loteAtualId)?a.loteAtualId:"__sem");
+    const itens=ordenar([...lotes.map(l=>({nome:esc(l.nome),n:cl.get(l.id)||0,onclick:`verLote('${l.id}')`})),{nome:"Sem lote",n:cl.get("__sem")||0,onclick:`abrirAnimaisFiltro('lote','__sem')`}]);
+    return {...x,chev:true,onclick:`abrirRebDet(this,'rbp${k}')`,
+      det:`<div class="reb-det" id="rbp${k}">${itens.map(i=>`<div class="rd" onclick="${i.onclick}"><span>${i.nome}</span><b>${i.n}</b></div>`).join("")}</div>`};
+  });
+  // donos
+  const cDono=contar(ativos,a=>a.marcaId&&marcas.find(m=>m.id===a.marcaId)?a.marcaId:"__sem");
+  const porDono=ordenar([...marcas.map(m=>({nome:esc(m.sigla||m.nome||"Marca"),sub:m.sigla&&m.nome?esc(m.nome):"",n:cDono.get(m.id)||0,onclick:`abrirAnimaisFiltro('marca','${m.id}')`})),
     {nome:"Sem dono informado",n:cDono.get("__sem")||0,onclick:`abrirAnimaisFiltro('marca','__sem')`}]);
-  const cProp=contar(a=>{const l=loteDe(a.loteAtualId);return l&&propriedades.find(p=>p.id===l.propriedadeId)?l.propriedadeId:"__sem";});
-  const porProp=ordenar([...propriedades.map(p=>({nome:esc(p.nome),n:cProp.get(p.id)||0})),{nome:"Sem propriedade",n:cProp.get("__sem")||0}]);
-  const cLote=contar(a=>loteDe(a.loteAtualId)?a.loteAtualId:"__sem");
-  const porLote=ordenar([...lotes.map(l=>{const p=propriedades.find(x=>x.id===l.propriedadeId);return{nome:esc(l.nome)+(p&&propriedades.length>1?` <small>· ${esc(p.nome)}</small>`:""),n:cLote.get(l.id)||0,onclick:`verLote('${l.id}')`};}),
+  // lotes
+  const cLote=contar(ativos,a=>loteDe(a.loteAtualId)?a.loteAtualId:"__sem");
+  const porLote=ordenar([...lotes.map(l=>{const p=propriedades.find(x=>x.id===l.propriedadeId);return{nome:esc(l.nome),sub:p?esc(p.nome):"",n:cLote.get(l.id)||0,onclick:`verLote('${l.id}')`};}),
     {nome:"Sem lote",n:cLote.get("__sem")||0,onclick:`abrirAnimaisFiltro('lote','__sem')`}]);
-  const grupoReb=(tit,arr)=>arr.length?`<div class="reb-grupo"><div class="reb-tit">${tit}</div>${arr.map(x=>`<div class="reb-lin${x.onclick?" rt":""}" ${x.onclick?`onclick="${x.onclick}"`:""}><div class="reb-nome">${x.nome}</div><div class="reb-n">${x.n}</div><div class="reb-bar"><i style="width:${ativos.length?Math.max(3,Math.round(x.n/ativos.length*100)):0}%"></i></div></div>`).join("")}</div>`:"";
+  let abaReb="prop";try{abaReb=localStorage.getItem("rebanho_home_aba")||"prop";}catch(_){}
+  if(!["prop","dono","lote"].includes(abaReb))abaReb="prop";
+  const listaReb=(k,arr)=>`<div class="reb-lista${abaReb===k?" on":""}" data-reb="${k}">${arr.length?arr.map(linha).join(""):`<div class="meta" style="padding:12px 0">Nenhum animal ativo.</div>`}</div>`;
+  const blocoRebanho=`<div class="card reb-card">
+      <div class="reb-total"><b>${ativos.length}</b><div><div class="rt1">${ativos.length===1?"animal ativo":"animais ativos"}</div><div class="rt2">${propriedades.length>1?"Todas as propriedades":(propriedades[0]?esc(propriedades[0].nome):"")}</div></div></div>
+      <div class="reb-abas">${[["prop","Propriedades"],["dono","Donos"],["lote","Lotes"]].map(([k,t])=>`<button class="${abaReb===k?"on":""}" onclick="trocarAbaReb('${k}')">${t}</button>`).join("")}</div>
+      ${listaReb("prop",porProp)}${listaReb("dono",porDono)}${listaReb("lote",porLote)}
+    </div>`;
 
   // Nome do usuário
   const user=await authUser();
@@ -1148,12 +1174,7 @@ async function telaInicio(){
     </div>
 
     <div class="home-sec">${ico("boi")}Rebanho hoje<span class="hs-mais" onclick="abrirAnimaisOperacional()">Ver animais ›</span></div>
-    <div class="card" style="cursor:default">
-      <div class="reb-total"><b>${ativos.length}</b><span>${ativos.length===1?"animal ativo":"animais ativos"}</span></div>
-      ${grupoReb("Por dono",porDono)}
-      ${grupoReb("Por propriedade",porProp)}
-      ${grupoReb("Por lote",porLote)}
-    </div>
+    ${blocoRebanho}
 
     <div class="home-sec">${ico("carteira")}Financeiro ${ano}<span class="hs-mais" onclick="menuFinanceiro()">Detalhes ›</span></div>
     <div class="fin-home">
@@ -1164,6 +1185,17 @@ async function telaInicio(){
       <div class="fh" onclick="menuFinanceiro()"><div class="l">Custos + despesas</div><div class="v neg">${homeMoney(despesas)}</div></div>
     </div>
 </div>`;
+}
+/* V143: abas e detalhes do bloco "Rebanho hoje" */
+function trocarAbaReb(k){
+  try{localStorage.setItem("rebanho_home_aba",k);}catch(_){}
+  document.querySelectorAll(".reb-abas button").forEach((b,i)=>b.classList.toggle("on",["prop","dono","lote"][i]===k));
+  document.querySelectorAll(".reb-lista").forEach(l=>l.classList.toggle("on",l.dataset.reb===k));
+}
+function abrirRebDet(el,id){
+  const d=document.getElementById(id);if(!d)return;
+  const on=!d.classList.contains("on");d.classList.toggle("on",on);el.classList.toggle("aberto",on);
+  el.style.borderBottom=on?"none":"";
 }
 /* ======================= V141: ATALHOS DA PÁGINA INICIAL ======================= */
 // Abre a lista de Animais já filtrada (ex.: por dono ou por lote)
