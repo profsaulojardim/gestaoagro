@@ -1085,6 +1085,12 @@ async function telaInicio(){
 
   // V141: valor do rebanho (custo de estoque dos ativos) — mesma regra do Financeiro › Resumo
   const valorRebanho=ativos.reduce((s,a)=>s+(a.custoEstoque||0),0);
+  // V148: nascidos na propriedade (custo zero no estoque, por isso fora do "valor do rebanho")
+  const nascidosProp=ativos.filter(a=>a.nascidoNaPropriedade===true);
+  const idadeMeses=a=>{const t=dataParaTs(a.dataNascimento);if(t==null)return null;const n=new Date(t),h=new Date();return (h.getFullYear()-n.getFullYear())*12+(h.getMonth()-n.getMonth())-(h.getDate()<n.getDate()?1:0);};
+  const nasAte24=nascidosProp.filter(a=>{const m=idadeMeses(a);return m!=null&&m<=24;}).length;
+  const nasAcima24=nascidosProp.filter(a=>{const m=idadeMeses(a);return m!=null&&m>24;}).length;
+  const nasSemData=nascidosProp.length-nasAte24-nasAcima24;
   // V143: rebanho hoje por propriedade, dono e lote (em abas)
   const {marcas}=await tudo();
   const loteDe=id=>lotes.find(l=>l.id===id);
@@ -1191,6 +1197,14 @@ async function telaInicio(){
       <div class="fh" onclick="menuFinanceiro()"><div class="l">A pagar</div><div class="v ${aPagar>0?"neg":""}">${homeMoney(aPagar)}</div></div>
       <div class="fh" onclick="menuFinanceiro()"><div class="l">Receita</div><div class="v">${homeMoney(receita)}</div></div>
       <div class="fh" onclick="menuFinanceiro()"><div class="l">Custos + despesas</div><div class="v neg">${homeMoney(despesas)}</div></div>
+      <div class="fh nasc" style="grid-column:1/-1;cursor:pointer" onclick="abrirAnimaisFiltro('desmama','todos')">
+        <div class="l">Nascidos na propriedade · fora do valor do rebanho</div>
+        <div style="display:flex;gap:10px;margin-top:6px">
+          <div style="flex:1;background:var(--verde-lite);border-radius:12px;padding:8px 10px"><div class="l">Até 24 meses</div><div class="v">${nasAte24}</div></div>
+          <div style="flex:1;background:var(--verde-lite);border-radius:12px;padding:8px 10px"><div class="l">Acima de 24 meses</div><div class="v">${nasAcima24}</div></div>
+        </div>
+        <div class="l" style="margin-top:6px;font-size:11.5px">Entram com custo zero no estoque (modelo de custo), então não somam no valor do rebanho.${nasSemData?` ${nasSemData} sem data de nascimento.`:""}</div>
+      </div>
     </div>
 </div>`;
 }
