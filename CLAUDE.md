@@ -26,6 +26,9 @@ Dados: IndexedDB local + sincronização Supabase (tabela `sync_records`; novos 
 - Datas de fatos (compra, nascimento, pagamento, desmama) não podem ser no futuro.
 - Medicamentos/vacinas (V142) são itens da store `insumos` (grupo "gado", categorias em `CAT_MED_ESTOQUE`).
   A store `medicamentos` é legada: só é lida pela migração `migrarMedicamentosParaEstoque()`; não gravar nela.
+- Aplicação de medicamento (V144) passa sempre por `formAplicacao()`/`registrarAplicacaoEstoque()`: eventos com
+  `aplicacaoId`, baixa no estoque (`insumo_mov` com `aplicacaoId`), custo `consumo_insumo` (Sanidade, `rateioLotes`)
+  e partida D Custo de produção / C Estoque de insumos. Sem saldo, não aplica. Excluir evento ajusta tudo (hook no `del`).
 
 ## Recursos desativados
 - O módulo **Engorda e pesagens** foi desativado a pedido do dono na V129 (quer o app mais simples).
