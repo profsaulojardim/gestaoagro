@@ -1133,9 +1133,13 @@ async function telaInicio(){
   const desmAtras=animais.filter(a=>a.nascidoNaPropriedade===true&&a.status==="Ativo"&&!a.desmamado&&a.dataNascimento)
     .map(a=>({a,d:DIAS_DESMAMA-diasEntre(dataParaTs(a.dataNascimento),Date.now())}))
     .filter(x=>x.d<0).sort((x,y)=>x.d-y.d);
-  // 2) eventos futuros agendados (avisos ainda não concluídos, de hoje em diante)
-  const eventosFut=(await getAll("avisos")).filter(a=>!a.feito&&a.data&&(dataParaTs(a.data)>=hojeTs||a.tipo==="Próxima dose"))
+  // 2) avisos com data nos próximos 10 dias (V147) — doses atrasadas também aparecem
+  const DIAS_AVISO_HOME=10;
+  const pendAvisos=(await getAll("avisos")).filter(a=>!a.feito&&a.data);
+  const diasAte=a=>Math.round((dataParaTs(a.data)-hojeTs)/86400000);
+  const eventosFut=pendAvisos.filter(a=>{const d=diasAte(a);return d<=DIAS_AVISO_HOME&&(d>=0||a.tipo==="Próxima dose");})
     .sort((x,y)=>(x.data||"").localeCompare(y.data||""));
+  const maisAdiante=pendAvisos.filter(a=>diasAte(a)>DIAS_AVISO_HOME).length;
   // 3) pastos há mais de 3 meses no mesmo estado (ocupado ou reservado)
   const pastos3m=(pastos||[]).filter(p=>(p.status==="Ocupado"||p.status==="Descanso")&&diasEntre(p.statusDesde||p.criadoEm,Date.now())>90)
     .map(p=>({p,d:diasEntre(p.statusDesde||p.criadoEm,Date.now())})).sort((x,y)=>y.d-x.d);
@@ -1155,9 +1159,10 @@ async function telaInicio(){
       <div class="ti" style="font-size:15px">🌱 ${esc(x.p.nome)} — ${x.p.status==="Ocupado"?"ocupado":"reservado"} há ${x.d} dias</div>
       <div class="meta">Mais de 3 meses no mesmo estado (${meses} ${meses===1?"mês":"meses"})</div></div>`);});
 
+  const linkMais=maisAdiante?`<div class="meta rt" style="margin:2px 4px 10px;cursor:pointer;color:var(--verde);font-weight:600" onclick="telaAvisos()">${maisAdiante} aviso(s) mais adiante · ver em Avisos ›</div>`:"";
   const blocoAvisos=itensAviso.length
-    ? `<div class="h3" style="margin-top:4px">🔔 Avisos importantes</div>${itensAviso.join("")}`
-    : `<div class="card" style="border-left:4px solid var(--verde)"><div class="ti" style="font-size:15px;color:var(--verde-esc)">✅ Tudo em dia</div><div class="meta" style="margin-top:4px">Sem desmamas atrasadas, eventos agendados ou pastos há mais de 3 meses no mesmo estado.</div></div>`;
+    ? `<div class="h3" style="margin-top:4px">🔔 Avisos importantes</div>${itensAviso.join("")}${linkMais}`
+    : `<div class="card" style="border-left:4px solid var(--verde)"><div class="ti" style="font-size:15px;color:var(--verde-esc)">✅ Tudo em dia</div><div class="meta" style="margin-top:4px">Sem desmamas atrasadas, avisos para os próximos ${DIAS_AVISO_HOME} dias ou pastos há mais de 3 meses no mesmo estado.</div></div>${linkMais}`;
 
   $t.innerHTML=`
     <div class="home-greet">
