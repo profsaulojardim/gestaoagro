@@ -4049,8 +4049,8 @@ async function telaMedicamentosManejo(medPre){
   const grupos=new Map();
   for(const e of eventos.filter(e=>e.tipo==="Medicamento")){
     const k=e.aplicacaoId||[e.data||"",e.hora||"",e.medicamentoId||"",e.via||"",e.dose||"",e.detalhes||""].join("|");
-    if(!grupos.has(k))grupos.set(k,{e,ids:[]});
-    grupos.get(k).ids.push(e.animalId);
+    if(!grupos.has(k))grupos.set(k,{e,ids:[],evIds:[]});
+    grupos.get(k).ids.push(e.animalId);grupos.get(k).evIds.push(e.id);
   }
   const regs=[...grupos.values()].sort((a,b)=>(b.e.data||"").localeCompare(a.e.data||"")||(b.e.hora||"").localeCompare(a.e.hora||""));
   const quem=ids=>{
@@ -4059,7 +4059,7 @@ async function telaMedicamentosManejo(medPre){
     const lotesN=[...new Set(an.map(a=>nomeLote(a.loteAtualId)))];
     return `<b>${an.length} animais</b>${lotesN.length<=2?` · ${lotesN.map(esc).join(", ")}`:""}`;
   };
-  const itensHist=regs.map(({e,ids})=>`<div class="manejo-reg"><div class="mr-top"><div class="mr-title">${esc(nomeMed(e.medicamentoId))}</div><div class="mr-date">${fmt(e.data)}${e.hora?` · ${esc(e.hora)}`:""}</div></div>
+  const itensHist=regs.map(({e,ids,evIds})=>`<div class="manejo-reg"><div class="mr-top"><div class="mr-title">${esc(nomeMed(e.medicamentoId))}</div><div class="mr-date" style="display:flex;align-items:center;gap:6px">${fmt(e.data)}${e.hora?` · ${esc(e.hora)}`:""}<button class="btn-fant" title="Excluir aplicação" style="padding:0 2px;color:var(--perigo);font-size:15px;line-height:1" onclick="excluirAplicacaoHist('${evIds.join(",")}')">✕</button></div></div>
     <div class="mr-meta">${quem(ids)}${e.via||e.dose?`<br>${[e.via,e.dose?(e.doseQtd&&ids.length>1?`${e.dose} por animal · total ${numFmt(e.doseQtd*ids.length)} ${e.unidade||""}`:e.dose):""].filter(Boolean).map(esc).join(" · ")}`:""}${e.aplicacaoId?`<br><span style="color:var(--verde)">✓ baixa no estoque</span>`:""}${e.detalhes?`<br>${esc(e.detalhes)}`:""}</div></div>`);
   const totalAnimais=regs.reduce((s,r)=>s+r.ids.length,0);
 
@@ -4147,6 +4147,24 @@ async function formAplicacao(opts){
     <div class="lado" style="margin-top:14px"><button class="btn btn-sec" onclick="fechar()">Cancelar</button>
       <button class="btn" onclick="salvarAplicacao()">Registrar</button></div>`);
   alvoAplicacao();
+}
+// V146: excluir uma aplicação pelo histórico (devolve ao estoque e estorna o custo pelo hook do del)
+async function excluirAplicacaoHist(idsCsv){
+  const ids=idsCsv.split(",").filter(Boolean);if(!ids.length)return;
+  const ev=await get("eventos",ids[0]);
+  const comBaixa=!!(ev&&ev.aplicacaoId);
+  const msg=`Excluir esta aplicação de ${ids.length} animal(is)?`+(comBaixa?`\n\nA quantidade volta para o estoque, o custo é estornado na contabilidade e o lembrete de próxima dose (se houver) é removido.`:"");
+  if(!confirm(msg))return;
+  await excluirEventosEmBloco(ids);
+  telaMedicamentosManejo();
+}
+// Exclui vários eventos e ajusta cada aplicação uma vez só (um estorno pelo total)
+async function excluirEventosEmBloco(ids){
+  const apls=new Set();
+  for(const id of ids){const e=await get("eventos",id);if(e&&e.aplicacaoId)apls.add(e.aplicacaoId);}
+  _ajustandoAplicacao=true;
+  try{for(const id of ids)await del("eventos",id);}finally{_ajustandoAplicacao=false;}
+  for(const a of apls)await ajustarAplicacaoAposExclusao(a);
 }
 function toggleProxDose(){
   const on=val("ap_prox")==="sim";const g=document.getElementById("ap_g_prox");if(g)g.style.display=on?"block":"none";
@@ -4620,7 +4638,7 @@ async function salvarGrupoManejo(tipo,idsCsv){
 async function excluirGrupoManejo(tipo,idsCsv){
   const ids=idsCsv.split(",");
   if(!confirm(`Excluir este registro? Ele será removido de ${ids.length} animal(is).`))return;
-  for(const id of ids)await del("eventos",id);
+  await excluirEventosEmBloco(ids);
   telaManejo();
 }
 
