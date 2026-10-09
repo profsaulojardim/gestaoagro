@@ -1425,19 +1425,16 @@ async function telaPainel(){
     ${props}
 
     <div class="sechead" style="margin-top:22px"><span class="sic">▦</span><h2>Módulos do sistema</h2></div>
-    <div class="submod">${ico("boi")}Rebanho</div>
+    <div class="submod">${ico("boi")}Rebanho e Manejo</div>
     <div class="grid">
       ${mod(ico("boi"),"Animais","Cadastro, nascimentos, desmama, consulta e histórico.","abrirAnimaisOperacional()")}
       ${mod(ico("etiqueta"),"Venda / Morte de Animal","Venda individual, múltipla, por lote ou grupo e registro de morte.","telaVendaMorteAnimal()")}
-    </div>
-    <div class="submod">${ico("pasto")}Manejo & Áreas</div>
-    <div class="grid">
       ${mod(ico("seringa"),"Eventos de Manejo","Marcar, medicar ou trocar de lote.","telaManejo()")}
       ${mod(ico("cerca"),"Lotes e Grupos","Lotes por propriedade e grupos de animais.","abrirLotesOperacional()")}
-      ${mod(ico("pasto"),"Gestão de Pastos","Pastos, capim, área e situação.","telaGestaoPasto()")}
     </div>
-    <div class="submod">${ico("caixa")}Recursos & Alertas</div>
+    <div class="submod">${ico("caixa")}Recursos e Alertas</div>
     <div class="grid">
+      ${mod(ico("pasto"),"Gestão de Pastos","Pastos, capim, área e situação.","telaGestaoPasto()")}
       ${mod(ico("caixa"),"Estoque de Insumos","Medicamentos, sal, e itens de manutenção.","telaEstoque()")}
       ${mod(ico("sino"),"Avisos","Eventos, manejos e alertas que exigem atenção.","telaAvisos()")}
       ${mod(ico("calc"),"Calculadora da Pecuária","Ferramentas para cálculos de negociações e indicadores.","telaCalculadoraPecuaria()")}
