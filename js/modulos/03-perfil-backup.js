@@ -75,13 +75,6 @@
       }
     }
 
-    document.querySelectorAll('.cloud-note,p,div').forEach(el=>{
-      if(el.children.length) return;
-      const t=(el.textContent||'').trim();
-      if(t.startsWith('A V80 mantém a sincronização automática')){
-        el.textContent='A sincronização mantém seus dados atualizados entre aparelhos. A cópia de segurança serve como uma proteção adicional para recuperação.';
-      }
-    });
   }
 
   let agendado=false;

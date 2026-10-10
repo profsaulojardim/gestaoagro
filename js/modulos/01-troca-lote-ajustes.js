@@ -52,13 +52,8 @@
   const obs=new MutationObserver(()=>{aplicarFix();corrigirTextos();});
   obs.observe(document.body,{childList:true,subtree:true,characterData:true});
 
-  const core=document.createElement('script');
-  core.src='troca-v81-core.js?v=86';
-  core.onload=()=>{
-    aplicarFix();corrigirTextos();
-    // O core é carregado depois; reaplica no próximo frame para garantir a ordem do CSS no Safari/iOS.
-    requestAnimationFrame(()=>{aplicarFix();corrigirTextos();});
-    setTimeout(()=>{aplicarFix();corrigirTextos();},100);
-  };
-  document.head.appendChild(core);
+  // V154: o núcleo (02-troca-lote.js) é carregado logo depois deste arquivo pelo index.html.
+  aplicarFix();corrigirTextos();
+  requestAnimationFrame(()=>{aplicarFix();corrigirTextos();});
+  setTimeout(()=>{aplicarFix();corrigirTextos();},100);
 })();

@@ -11,13 +11,23 @@ Dados: IndexedDB local + sincronização Supabase (tabela `sync_records`; novos 
    - `const CACHE = "rebanho-vN-<resumo>";` (nome novo força a atualização dos aparelhos)
 3. O número exibido na tela inicial ("Versão N") vem automaticamente do `?v=` que o service worker
    coloca nos scripts — não escrever o número fixo em nenhum outro arquivo.
-4. Arquivo `.js` novo: incluir nas DUAS listas do `sw.js` (`CORE` e `scripts`) e na linha de `<script>` injetada.
+4. Arquivo `.js` novo: incluir a tag `<script src="js/...">` no `index.html` (na ordem certa) e o caminho na
+   lista `ARQUIVOS` do `sw.js`; depois rodar `python3 testes/conferir_arquivos.py`.
+
+## Organização (V154) — ver ARQUITETURA.md
+- `index.html` só tem a estrutura da página e a ordem dos scripts; visual em `css/estilo.css`; imagens em `img/`.
+- Núcleo em `js/app/` (por assunto); ajustes/substituições de funções em `js/modulos/`; `js/app/99-iniciar.js` por último.
+- Mudanças novas: preferir editar o arquivo do núcleo do assunto em vez de criar mais um módulo que substitui função.
+- Chave e endereço do Supabase: `js/app/01-config-conta.js` (é onde se troca para a cópia de teste).
 
 ## Publicação
 - O dono autorizou publicar direto na `main`. Mensagem do commit em português, começando por `VN: ...`,
   com a lista do que mudou.
-- Testar antes (sintaxe com `node --check` e fluxo no navegador headless) e conferir depois que o site
-  publicado responde com a versão nova.
+- Testar antes (sintaxe com `node --check` em cada arquivo, `testes/conferir_arquivos.py`, fluxo no navegador
+  headless e, se mexer na sincronização, `testes/sincronizacao_dois_aparelhos.js`) e conferir depois que o
+  site publicado responde com a versão nova.
+- A cada versão, gerar também o .zip da cópia de teste (outra conta do GitHub, banco Supabase
+  `homosmdrqtdxtmmmnbpd`): mesmos arquivos, sem CLAUDE.md, trocando endereço e chave em `js/app/01-config-conta.js`.
 
 ## Cuidados conhecidos
 - Registros contábeis (`tipo: "partida_contabil"`) ficam na store `lancamentos`: toda lista/soma de

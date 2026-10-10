@@ -2,8 +2,11 @@
 (()=>{
   // V124: a versão vem do sw.js (APP_VERSION), que injeta os scripts como arquivo.js?v=NNN.
   // Assim o número mostrado na tela inicial nunca fica desatualizado.
-  const APP_VERSAO=(()=>{try{const v=new URL(document.currentScript.src).searchParams.get('v');if(v)return v;}catch(_){}return '124';})();
+  // V154: sem o ?v (primeira abertura, antes do service worker), lê o número direto do sw.js.
+  let APP_VERSAO=(()=>{try{const v=new URL(document.currentScript.src).searchParams.get('v');if(v)return v;}catch(_){}return '';})();
   window.APP_VERSAO=APP_VERSAO;
+  if(!APP_VERSAO)fetch('sw.js',{cache:'no-store'}).then(r=>r.text()).then(t=>{const m=t.match(/APP_VERSION\s*=\s*"(\d+)"/);
+    if(m){APP_VERSAO=m[1];window.APP_VERSAO=APP_VERSAO;const el=document.getElementById('app-versao');if(el)el.textContent=`Versão ${APP_VERSAO}`;}}).catch(()=>{});
   let busca='';
   let tipo='todos';
 
@@ -74,7 +77,7 @@
   function inserirVersao(){
     try{
       if(!$t||!$t.querySelector('.home-greet')||document.getElementById('app-versao'))return;
-      const v=document.createElement('div');v.id='app-versao';v.textContent=`Versão ${APP_VERSAO}`;
+      const v=document.createElement('div');v.id='app-versao';v.textContent=APP_VERSAO?`Versão ${APP_VERSAO}`:'';
       v.style.cssText='text-align:center;color:var(--muted);font-size:12px;margin:22px 0 8px;opacity:.8;';$t.appendChild(v);
     }catch(e){console.error('Versão V116:',e);}
   }

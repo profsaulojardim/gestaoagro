@@ -21,10 +21,12 @@ Arquivo: `engorda-v120.js`. A última versão com o módulo ligado está guardad
 - Eventos "Pesagem" já registrados continuam no histórico dos animais (como texto).
 - A contabilidade não depende deste módulo (modelo de custo, sem "ganho a realizar").
 
-**Como reativar**
-1. Mover `desativados/engorda-v120.js` de volta para a raiz do repositório.
-2. No `sw.js`, incluir `engorda-v120.js` nas duas listas (`CORE` e `scripts`) e acrescentar
-   `<script src="engorda-v120.js?v=${APP_VERSION}"></script>` no fim da linha de scripts injetados.
-3. No `index.html`, no grupo "Rebanho" da Gestão Operacional, voltar o cartão:
-   `${mod("⚖️","Engorda e pesagens","Pesagens, peso estimado, @ produzidas e custo da @.","telaEngorda()")}`
-4. Subir a versão (regra do CLAUDE.md) e publicar.
+**Como reativar** (estrutura de pastas da V154)
+1. Mover `desativados/engorda-v120.js` para `js/modulos/18-engorda.js`.
+2. No `index.html`, acrescentar `<script src="js/modulos/18-engorda.js"></script>` logo depois de
+   `17-perfil-gestao.js` (antes de `js/app/99-iniciar.js`).
+3. No `sw.js`, incluir `"./js/modulos/18-engorda.js"` na lista `ARQUIVOS`, na mesma posição.
+4. Em `js/app/07-painel-pastos-avisos.js`, no grupo "Rebanho e Manejo", voltar o cartão:
+   `${mod(ico("boi"),"Engorda e pesagens","Pesagens, peso estimado, @ produzidas e custo da @.","telaEngorda()")}`
+5. Rodar `python3 testes/conferir_arquivos.py`.
+6. Subir a versão (regra do CLAUDE.md) e publicar.
