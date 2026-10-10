@@ -15,6 +15,11 @@ Dados: IndexedDB local + sincronização Supabase (tabela `sync_records`; novos 
    lista `ARQUIVOS` do `sw.js`; depois rodar `python3 testes/conferir_arquivos.py`.
 
 ## Organização (V154) — ver ARQUITETURA.md
+**Pedido do dono: TODA atualização deve ser feita bem organizada.** Em cada versão:
+- Código no arquivo certo do assunto (núcleo `js/app/` primeiro); nada de remendo solto, arquivo `-vNNN` ou
+  função duplicada. Se substituir algo, apagar o que ficou sem uso.
+- Nomes claros em português, cabeçalho explicando cada arquivo novo, sem arquivos de teste/rascunho no repositório.
+- Atualizar `ARQUITETURA.md` quando mudar onde fica alguma coisa; testes automáticos novos vão em `testes/`.
 - `index.html` só tem a estrutura da página e a ordem dos scripts; visual em `css/estilo.css`; imagens em `img/`.
 - Núcleo em `js/app/` (por assunto); ajustes/substituições de funções em `js/modulos/`; `js/app/99-iniciar.js` por último.
 - Mudanças novas: preferir editar o arquivo do núcleo do assunto em vez de criar mais um módulo que substitui função.
