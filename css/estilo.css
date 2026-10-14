@@ -452,3 +452,9 @@
   .an-custo-cats b{font-size:14px;color:var(--verde-esc);}
   .an-custo-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--linha);font-size:14px;}
   .an-custo-item .meta{font-size:12px;margin-top:2px;}
+  /* Histórico de peso (V169) */
+  .an-peso-item{padding:10px 0;border-bottom:1px solid var(--linha);}
+  .an-peso-cab{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:14.5px;}
+  .an-peso-per{display:flex;justify-content:space-between;gap:8px;margin-top:4px;font-size:12.5px;color:var(--muted);}
+  .an-peso-per b{color:var(--verde-esc);}
+
