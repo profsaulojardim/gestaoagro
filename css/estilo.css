@@ -457,4 +457,9 @@
   .an-peso-cab{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:14.5px;}
   .an-peso-per{display:flex;justify-content:space-between;gap:8px;margin-top:4px;font-size:12.5px;color:var(--muted);}
   .an-peso-per b{color:var(--verde-esc);}
+  /* Foto no cadastro do item de estoque (V170) */
+  .in-foto-linha{display:flex;align-items:center;gap:12px;margin:4px 0 6px;}
+  .in-foto{width:64px;height:64px;border-radius:14px;background:var(--verde-lite);color:var(--verde);display:flex;align-items:center;justify-content:center;overflow:hidden;flex:none;border:1.5px dashed var(--verde);}
+  .in-foto img{width:100%;height:100%;object-fit:cover;}
+  .in-foto svg.ico{width:26px;height:26px;}
 
