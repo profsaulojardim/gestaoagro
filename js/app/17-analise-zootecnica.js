@@ -84,7 +84,7 @@ async function telaAnaliseIndividual(){
   const comGmd=sel.filter(l=>l.d.gmd!=null),comMargem=sel.filter(l=>l.d.margem!=null);
   const gmdMedio=comGmd.length?comGmd.reduce((s,l)=>s+l.d.gmd,0)/comGmd.length:null;
   const margemTotal=comMargem.reduce((s,l)=>s+l.d.margem,0);
-  const aba=(k,t)=>`<button class="${_anFiltro===k?"on":""}" onclick="_anFiltro='${k}';telaAnaliseIndividual()">${t} (${(grupos[k]||[]).length})</button>`;
+  const aba=(k,t)=>`<button class="${_anFiltro===k?"on":""}" onclick="_anFiltro='${k}';telaAnaliseIndividual()">${t}<small>(${(grupos[k]||[]).length})</small></button>`;
   const stCls={Ativo:"chip-lote",Vendido:"chip-off",Morto:"chip-off"};
   const item=({a,d})=>`<div class="card rt an-item" data-b="${esc(((a.brinco||"")+" "+(a.nome||"")+" "+codAnimal(a)).toLowerCase())}" onclick="analiseAnimal('${a.id}')">
       <div class="an-item-cab"><div class="ti">${esc(rotulo(a))}${a.brinco&&a.nome?` · ${esc(a.nome)}`:""}</div>
