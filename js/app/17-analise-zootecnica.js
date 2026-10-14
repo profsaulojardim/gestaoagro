@@ -11,7 +11,13 @@
    - Fim: vendido → data e peso bruto da venda (em venda de vários animais, a média por animal);
      morto → data da morte e a última pesagem; ativo → a última pesagem (evento "Pesagem" com pesoKg).
    - GMD = (peso final − peso inicial) / dias entre as duas pesagens.
-   - Margem de contribuição = valor de venda − valor de compra (morte: venda zero). */
+   - Margem de contribuição = valor de venda − valor de compra (morte: venda zero).
+   - Custo do animal (V168) = tudo que foi gasto nele no período em que esteve no rebanho:
+       · remédios e vacinas aplicados nele (dose × custo médio do item na aplicação);
+       · custos de produção do Financeiro e consumos do Estoque apropriados ao animal, a vários animais,
+         ao lote, ao grupo, ao pasto, à propriedade ou a todo o rebanho — divididos igualmente entre os
+         animais atingidos naquela data (lote/grupo: o lote e os grupos do animal hoje; pasto: o lote que
+         ocupava o pasto na data). Despesas administrativas e de venda não entram. */
 
 const diasEntreDatas=(ini,fim)=>{if(!ini||!fim)return null;return Math.round((new Date(fim+"T12:00:00")-new Date(ini+"T12:00:00"))/86400000);};
 // Lê número digitado no padrão brasileiro: "320,5", "1.250" ou "320.5".
@@ -64,6 +70,80 @@ function desempenhoAnimal(a,eventos){
   return r;
 }
 
+/* ---------- Custo por animal (V168) ---------- */
+async function dadosCustos(){
+  const [lancamentos,movs,insumos,lotes,pastos,grupos,grupo_animais,propriedades]=await Promise.all(
+    ["lancamentos","insumo_mov","insumos","lotes","pastos","grupos","grupo_animais","propriedades"].map(n=>getAll(n)));
+  return {lancamentos,movs,insumos,lotes,pastos,grupos,grupo_animais,propriedades};
+}
+// Lote que ocupava o pasto na data (pelo histórico de períodos do pasto).
+function loteNoPasto(pt,data){
+  const ts=new Date(data+"T12:00:00").getTime();
+  const per=(pt.historico||[]).find(p=>p.status==="Ocupado"&&p.loteId&&p.inicio<=ts&&(p.fim==null||ts<p.fim));
+  if(per)return per.loteId;
+  return pt.status==="Ocupado"&&pt.loteId&&(pt.statusDesde==null||pt.statusDesde<=ts)?pt.loteId:null;
+}
+// Mapa animalId → {total, itens:[{data,descricao,origem,valor}]}
+function custosPorAnimal(animais,eventos,dc,desempenhos){
+  const res=new Map(animais.map(a=>[a.id,{total:0,itens:[]}]));
+  const add=(id,item)=>{const r=res.get(id);if(!r||!(item.valor>0))return;r.total+=item.valor;r.itens.push(item);};
+  const nomeDe=(lista,id)=>(lista.find(x=>x.id===id)||{}).nome||"—";
+  const movPorId=new Map(dc.movs.map(m=>[m.id,m]));
+  // 1) remédios e vacinas aplicados no animal
+  for(const e of eventos){
+    if(!e.aplicacaoId||!e.movId)continue;
+    const mov=movPorId.get(e.movId);if(!mov)continue;
+    const valor=(Number(e.doseQtd)||0)*(Number(mov.custoUnit)||0);
+    const it=dc.insumos.find(i=>i.id===(e.medicamentoId||mov.insumoId));
+    add(e.animalId,{data:e.data,descricao:`${it?it.nome:"Medicamento"}${e.dose?` · ${e.dose}`:""}`,origem:"Aplicado neste animal",categoria:"Sanidade",valor});
+  }
+  // 2) custos de produção apropriados (Financeiro e consumos do Estoque)
+  const noRebanho=(a,data)=>{const d=desempenhos.get(a.id);const ini=d&&d.dataIni,fim=a.status!=="Ativo"&&a.saida?a.saida.data:null;
+    return (!ini||ini<=data)&&(!fim||data<=fim);};
+  const membrosGrupo=gid=>new Set(dc.grupo_animais.filter(v=>v.grupoId===gid).map(v=>v.animalId));
+  for(const l of dc.lancamentos){
+    if(l.tipo==="partida_contabil"||l.tipo!=="despesa")continue;
+    if(!(l.classe==="custo"||l.natureza==="custo"))continue;
+    if(l.aplicacaoId)continue; // já contado no item 1, animal por animal
+    const valor=Number(l.valor)||0;if(!(valor>0)||!l.data)continue;
+    const mov=l.origem==="consumo_insumo"?movPorId.get(l.refId):null;
+    const tipo=l.apropriacaoTipo||(mov&&mov.apropriacaoTipo)||"propriedade";
+    const ids=(l.apropriacaoIds&&l.apropriacaoIds.length?l.apropriacaoIds:(mov&&mov.apropriacaoIds&&mov.apropriacaoIds.length?mov.apropriacaoIds:(l.apropriacaoId?[l.apropriacaoId]:[])));
+    let alvo=[],onde="";
+    if(mov&&mov.animalIds&&mov.animalIds.length){alvo=animais.filter(a=>mov.animalIds.includes(a.id));onde="animais atingidos no consumo";}
+    else if(tipo==="animal"||tipo==="animais"){alvo=animais.filter(a=>ids.includes(a.id));onde=alvo.length>1?"animais escolhidos":"animal específico";}
+    else if(tipo==="lote"){alvo=animais.filter(a=>ids.includes(a.loteAtualId)&&noRebanho(a,l.data));onde=`lote ${ids.map(i=>nomeDe(dc.lotes,i)).join(", ")}`;}
+    else if(tipo==="grupo"){const m=new Set(ids.flatMap(g=>[...membrosGrupo(g)]));alvo=animais.filter(a=>m.has(a.id)&&noRebanho(a,l.data));onde=`grupo ${ids.map(i=>nomeDe(dc.grupos,i)).join(", ")}`;}
+    else if(tipo==="pasto"){const ls=ids.map(i=>dc.pastos.find(p=>p.id===i)).filter(Boolean).map(p=>loteNoPasto(p,l.data)).filter(Boolean);
+      alvo=animais.filter(a=>ls.includes(a.loteAtualId)&&noRebanho(a,l.data));onde=`pasto ${ids.map(i=>nomeDe(dc.pastos,i)).join(", ")}`;}
+    else if(tipo==="rebanho"){alvo=animais.filter(a=>noRebanho(a,l.data));onde="todo o rebanho";}
+    else{const props=ids.length?ids:(l.propriedadeId?[l.propriedadeId]:[]);
+      const lotesP=new Set(dc.lotes.filter(x=>!props.length||props.includes(x.propriedadeId)).map(x=>x.id));
+      alvo=animais.filter(a=>lotesP.has(a.loteAtualId)&&noRebanho(a,l.data));onde=props.length?`propriedade ${props.map(i=>nomeDe(dc.propriedades,i)).join(", ")}`:"todo o rebanho";}
+    if(!alvo.length)continue;
+    const parte=valor/alvo.length;
+    for(const a of alvo)add(a.id,{data:l.data,descricao:l.descricao||l.categoria||"Custo",categoria:l.categoria||"",
+      origem:alvo.length>1?`${moeda(valor)} ÷ ${alvo.length} animais (${onde})`:`Lançado para ${onde}`,valor:parte});
+  }
+  for(const r of res.values())r.itens.sort((x,y)=>String(y.data).localeCompare(String(x.data)));
+  return res;
+}
+async function verDetalhesCusto(id){
+  const animais=await getAll("animais"),eventos=await getAll("eventos"),dc=await dadosCustos();
+  const des=new Map(animais.map(a=>[a.id,desempenhoAnimal(a,eventos)]));
+  const c=custosPorAnimal(animais,eventos,dc,des).get(id)||{total:0,itens:[]};
+  const a=animais.find(x=>x.id===id);
+  const porCat={};c.itens.forEach(i=>{const k=i.categoria||"Outros";porCat[k]=(porCat[k]||0)+i.valor;});
+  abrir(`<h2>Custo de ${esc(a?rotulo(a)+(a.brinco&&a.nome?` · ${a.nome}`:""):"animal")}</h2>
+    <div class="an-custo-total"><span>Total gasto no animal</span><b>${moeda(c.total)}</b></div>
+    ${Object.keys(porCat).length?`<div class="an-custo-cats">${Object.entries(porCat).sort((x,y)=>y[1]-x[1]).map(([k,v])=>`<div><span>${esc(k)}</span><b>${moeda(v)}</b></div>`).join("")}</div>`:""}
+    <div class="h3">Detalhes</div>
+    ${c.itens.map(i=>`<div class="an-custo-item"><div style="flex:1;min-width:0"><b>${esc(i.descricao)}</b>
+      <div class="meta">${fmt(i.data)} · ${esc(i.origem)}</div></div><b>${moeda(i.valor)}</b></div>`).join("")||`<div class="meta">Nenhum custo registrado para este animal.</div>`}
+    <div class="meta" style="margin-top:12px;line-height:1.45">Entram remédios e vacinas aplicados no animal e os custos de produção lançados para ele, para o lote, grupo, pasto, propriedade ou todo o rebanho — divididos entre os animais que estavam no rebanho na data. O valor de compra não entra aqui (está na margem).</div>
+    <button class="btn" style="margin-top:16px" onclick="fechar()">Fechar</button>`);
+}
+
 /* ---------- Página inicial da Análise ---------- */
 function telaAnaliseZootecnica(){
   topoPagina();
@@ -78,17 +158,20 @@ function telaAnaliseZootecnica(){
 let _anFiltro="todos";
 async function telaAnaliseIndividual(){
   topoPagina();
-  const animais=await getAll("animais"),eventos=await getAll("eventos");
-  const linhas=animais.map(a=>({a,d:desempenhoAnimal(a,eventos)}))
+  const animais=await getAll("animais"),eventos=await getAll("eventos"),dc=await dadosCustos();
+  const des=new Map(animais.map(a=>[a.id,desempenhoAnimal(a,eventos)]));
+  const custos=custosPorAnimal(animais,eventos,dc,des);
+  const linhas=animais.map(a=>({a,d:des.get(a.id),c:custos.get(a.id)}))
     .sort((x,y)=>String(rotulo(x.a)).localeCompare(String(rotulo(y.a)),'pt-BR',{numeric:true}));
   const grupos={todos:linhas,Ativo:linhas.filter(l=>l.d.status==="Ativo"),Vendido:linhas.filter(l=>l.d.status==="Vendido"),Morto:linhas.filter(l=>l.d.status==="Morto")};
   const sel=grupos[_anFiltro]||linhas;
   const comGmd=sel.filter(l=>l.d.gmd!=null),comMargem=sel.filter(l=>l.d.margem!=null);
   const gmdMedio=comGmd.length?comGmd.reduce((s,l)=>s+l.d.gmd,0)/comGmd.length:null;
   const margemTotal=comMargem.reduce((s,l)=>s+l.d.margem,0);
+  const custoMedio=sel.length?sel.reduce((s,l)=>s+(l.c?l.c.total:0),0)/sel.length:0;
   const aba=(k,t)=>`<button class="${_anFiltro===k?"on":""}" onclick="_anFiltro='${k}';telaAnaliseIndividual()">${t}<small>(${(grupos[k]||[]).length})</small></button>`;
   const stCls={Ativo:"chip-lote",Vendido:"chip-off",Morto:"chip-off"};
-  const item=({a,d})=>`<div class="card rt an-item" data-b="${esc(((a.brinco||"")+" "+(a.nome||"")+" "+codAnimal(a)).toLowerCase())}" onclick="analiseAnimal('${a.id}')">
+  const item=({a,d,c})=>`<div class="card rt an-item" data-b="${esc(((a.brinco||"")+" "+(a.nome||"")+" "+codAnimal(a)).toLowerCase())}" onclick="analiseAnimal('${a.id}')">
       <div class="an-item-cab">${animalThumb(a,46)}<div class="ti" style="flex:1;min-width:0">${esc(rotulo(a))}${a.brinco&&a.nome?` · ${esc(a.nome)}`:""}
         <div class="meta">${d.dias!=null?diasEMeses(d.dias):(d.nascido?"Nascido na propriedade":"Comprado")}</div></div>
         <span class="chip ${stCls[d.status]||""}">${esc(d.status)}</span></div>
@@ -96,6 +179,7 @@ async function telaAnaliseIndividual(){
         <div><span>GMD</span><b>${d.gmd!=null?kgFmt(d.gmd,3)+" kg/dia":"—"}</b></div>
         <div><span>Ganho</span><b>${d.ganhoKg!=null?kgFmt(d.ganhoKg)+" kg":"—"}</b></div>
         <div><span>Margem</span><b class="${d.margem<0?"neg":""}">${d.margem!=null?moeda(d.margem):"—"}</b></div>
+        <div><span>Custo</span><b>${c&&c.total>0?moeda(c.total):"—"}</b></div>
       </div></div>`;
   $t.innerHTML=`<button class="voltar" onclick="telaAnaliseZootecnica()">‹ Análise</button>
     <div class="sechead"><span class="sic" data-ico="boi"></span><h2>Análise individual</h2></div>
@@ -103,6 +187,7 @@ async function telaAnaliseIndividual(){
     <div class="an-resumo">
       <div><span>GMD médio</span><b>${gmdMedio!=null?kgFmt(gmdMedio,3)+" kg/dia":"—"}</b><small>${comGmd.length} de ${sel.length} com pesos</small></div>
       <div><span>Margem somada</span><b class="${margemTotal<0?"neg":""}">${comMargem.length?moeda(margemTotal):"—"}</b><small>${comMargem.length} animal(is) com compra e venda</small></div>
+      <div class="full"><span>Custo médio por animal</span><b>${moeda(custoMedio)}</b><small>remédios, vacinas e custos de produção rateados</small></div>
     </div>
     <input id="an_busca" type="search" placeholder="Buscar por brinco, nome ou código" oninput="filtrarAnaliseIndividual()" style="margin:4px 0 12px">
     <div id="an_lista">${sel.map(item).join("")||`<div class="vazio"><b>Nenhum animal neste filtro.</b></div>`}</div>`;
@@ -116,7 +201,9 @@ function filtrarAnaliseIndividual(){
 async function analiseAnimal(id){
   topoPagina();
   const a=await get("animais",id);if(!a)return telaAnaliseIndividual();
-  const d=desempenhoAnimal(a,await getAll("eventos"));
+  const eventos=await getAll("eventos"),animais=await getAll("animais"),dc=await dadosCustos();
+  const des=new Map(animais.map(x=>[x.id,desempenhoAnimal(x,eventos)]));
+  const d=des.get(id),c=custosPorAnimal(animais,eventos,dc,des).get(id)||{total:0,itens:[]};
   const linha=(rot,v,sub="")=>`<div class="an-linha"><span>${rot}</span><b>${v}</b>${sub?`<small>${sub}</small>`:""}</div>`;
   const inicio=d.inicioPorPesagem?"Primeira pesagem":(d.nascido?"Nascimento":"Compra");
   const fimRot=d.status==="Vendido"?"Venda":(d.status==="Morto"?"Última pesagem (antes da morte)":"Última pesagem");
@@ -129,6 +216,7 @@ async function analiseAnimal(id){
       <div><span>GMD</span><b>${d.gmd!=null?kgFmt(d.gmd,3):"—"}</b><small>kg/dia</small></div>
       <div><span>Peso ganho</span><b>${d.ganhoKg!=null?kgFmt(d.ganhoKg):"—"}</b><small>kg</small></div>
       <div><span>Margem</span><b class="${d.margem<0?"neg":""}">${d.margem!=null?moeda(d.margem):"—"}</b><small>venda − compra</small></div>
+      <div class="rt" onclick="verDetalhesCusto('${a.id}')"><span>Custo do animal</span><b>${moeda(c.total)}</b><small class="an-link">ver detalhes ›</small></div>
     </div>
     <div class="card">
       <div class="h3" style="margin-top:0">Desempenho</div>
@@ -143,6 +231,10 @@ async function analiseAnimal(id){
       ${linha(d.nascido?"Valor de entrada (nascido)":"Valor de compra",d.valorCompra!=null?moeda(d.valorCompra):"—")}
       ${linha(d.status==="Morto"?"Valor de venda (morte)":"Valor de venda",d.valorVenda!=null?moeda(d.valorVenda):(d.status==="Ativo"?"ainda não vendido":"—"))}
       ${linha("Margem (venda − compra)",d.margem!=null?`<span class="${d.margem<0?"neg":""}">${moeda(d.margem)}</span>`:"—")}
+      <div class="h3">Custo do animal</div>
+      ${linha("Gastos no animal",moeda(c.total))}
+      ${d.margem!=null?linha("Margem − custos",`<span class="${d.margem-c.total<0?"neg":""}">${moeda(d.margem-c.total)}</span>`):""}
+      <button class="btn btn-sec" style="margin:12px 0 0" onclick="verDetalhesCusto('${a.id}')">Ver detalhes do custo (${c.itens.length})</button>
       ${d.avisos.length?`<div class="eq-aviso" style="margin-top:12px">${d.avisos.map(esc).join("<br>")}</div>`:""}
     </div>
     ${d.status==="Ativo"?`<div class="card"><div class="ti">Registrar pesagem</div>

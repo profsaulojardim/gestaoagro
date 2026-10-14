@@ -89,7 +89,7 @@
     if(anim.length){rateioLotes={};for(const x of anim){const k=x.loteAtualId||'__sem';rateioLotes[k]=(rateioLotes[k]||0)+valor/anim.length;}}
     const aprId=aprIds.length===1?aprIds[0]:null;
     it.saldo=(it.saldo||0)-qtd;await put('insumos',it);
-    await put('insumo_mov',{id:movId,insumoId:id,tipo:'consumo',qtd,unidade:it.unidade||'un',custoUnit,data,obs,apropriacaoTipo:aprTipo,apropriacaoId:aprId,apropriacaoIds:aprIds,animaisAtingidos:anim.length,criadoEm:Date.now()});
+    await put('insumo_mov',{id:movId,insumoId:id,tipo:'consumo',qtd,unidade:it.unidade||'un',custoUnit,data,obs,apropriacaoTipo:aprTipo,apropriacaoId:aprId,apropriacaoIds:aprIds,animaisAtingidos:anim.length,animalIds:anim.map(x=>x.id),criadoEm:Date.now()}); // V168: animalIds = custo por animal exato
     if(valor>0)await put('lancamentos',{id:uid(),tipo:'despesa',natureza:'custo',categoria:custoCategoria(it),valor,classe:'custo',data,descricao:`Consumo ${it.nome} (${numFmt(qtd)} ${it.unidade||'un'})`,propriedadeId,pago:true,origem:'consumo_insumo',refId:movId,apropriacaoTipo:aprTipo,apropriacaoId:aprId,apropriacaoIds:aprIds,rateioLotes,contaV144:true,criadoEm:Date.now()});
     fechar();telaEstoque();
   };
