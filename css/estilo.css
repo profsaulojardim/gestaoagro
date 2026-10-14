@@ -266,8 +266,6 @@
   .home-stat .hs-label{font-size:11px;color:var(--muted);line-height:1.15}
   .home-stat .hs-value{font-size:18px;font-weight:800;color:var(--verde-esc);margin-top:4px;line-height:1.1}
   .home-stat.neg .hs-value{color:var(--perigo)}
-    display:flex;gap:12px;align-items:flex-start}
-    justify-content:center;font-weight:800;flex-shrink:0}
   /* V141: nova página inicial */
   .home-sec{display:flex;align-items:center;gap:8px;margin:20px 4px 10px;font-weight:800;color:var(--verde-esc);font-size:17px;}
   .home-sec svg.ico{width:20px;height:20px;color:var(--verde);} .home-sec .hs-mais{margin-left:auto;font-size:13px;font-weight:600;color:var(--verde);cursor:pointer;}
