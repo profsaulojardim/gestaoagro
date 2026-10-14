@@ -427,7 +427,8 @@
   .an-resumo small,.an-destaques small{display:block;font-size:11.5px;color:var(--muted);margin-top:2px;}
   .an-destaques{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;}
   .an-destaques b{font-size:16px;}
-  .an-item-cab{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .an-item-cab{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+  .an-item-cab .an-thumb{flex:none;}
   .an-nums{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px;}
   .an-nums span{display:block;font-size:11.5px;color:var(--muted);}
   .an-nums b{font-size:14.5px;color:var(--verde-esc);}
