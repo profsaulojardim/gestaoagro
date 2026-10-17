@@ -31,13 +31,13 @@
 
   window.calcularNegociacaoPecuaria=function(){
     const PB=numeroCalc('calc_peso_bruto'),qtd=numeroCalc('calc_qtd_animais');
-    const W=numeroCalc('calc_desc_arroba'),V=numeroCalc('calc_tara'),P=numeroCalc('calc_preco_arroba'),Q=qtd;
+    const W=numeroCalc('calc_desc_arroba'),V=numeroCalc('calc_tara'),P=numeroCalc('calc_preco_arroba'),Q=qtd,NT=numeroCalc('calc_tara_qtd')??0;
     const rL=document.getElementById('calc_res_liq'),rM=document.getElementById('calc_res_medio'),rT=document.getElementById('calc_res_total');
     const sL=document.getElementById('calc_res_liq_sub'),sM=document.getElementById('calc_res_medio_sub');
     // Mesma conta da venda e da compra (calcularNegociacaoValores, em 06-venda-financeiro.js):
-    // Y = PB/2 − PB × 1/2 × W/15 (kg) · T = (V × Q)/15 (@) · L = Y/15 − T (@) · Valor = L × preço/@
-    const c=calcularNegociacaoValores(PB,W,V,P,Q);
-    if(!c){if(rL)rL.textContent='—';if(rM)rM.textContent='—';if(rT)rT.textContent='—';if(sL)sL.textContent='Preencha todos os campos';if(sM)sM.textContent='';return;}
+    // Y = PB/2 − PB × 1/2 × W/15 (kg) · T = (V × animais com tara)/15 (@) · L = Y/15 − T (@) · Valor = L × preço/@
+    const c=calcularNegociacaoValores(PB,W,V,P,Q,NT);
+    if(!c){if(rL)rL.textContent='—';if(rM)rM.textContent='—';if(rT)rT.textContent='—';if(sL)sL.textContent=(Q>0&&NT>Q)?'Animais com tara não pode passar da quantidade':'Preencha todos os campos';if(sM)sM.textContent='';return;}
     rL.textContent=`${fmt(c.pesoLiquidoArroba,2)} @`;
     sL.textContent=`${fmt(c.pesoLiquidoKg,2)} kg líquidos`;
     rM.textContent=`${fmt(c.pesoMedioArroba,2)} @`;
@@ -54,16 +54,18 @@
         <div class="calc-campos">
           <div class="full"><label>Peso bruto (kg)</label><input id="calc_peso_bruto" inputmode="decimal" placeholder="Ex: 12.500" oninput="calcularNegociacaoPecuaria()"></div>
           <div><label>Desconto por arroba (kg)</label><input id="calc_desc_arroba" inputmode="decimal" placeholder="Ex: 1" oninput="calcularNegociacaoPecuaria()"></div>
-          <div><label>Tara por animal (kg)</label><input id="calc_tara" inputmode="decimal" placeholder="Ex: 4" oninput="calcularNegociacaoPecuaria()"></div>
+          <div><label>Tara por animal (kg)</label><input id="calc_tara" inputmode="decimal" value="7,5" oninput="calcularNegociacaoPecuaria()"></div>
           <div><label>Preço da arroba (R$)</label><input id="calc_preco_arroba" inputmode="decimal" placeholder="Ex: 320" oninput="calcularNegociacaoPecuaria()"></div>
           <div><label>Quantidade de animais</label><input id="calc_qtd_animais" type="number" min="1" inputmode="numeric" placeholder="Ex: 25" oninput="calcularNegociacaoPecuaria()"></div>
+          <div class="full"><label>Animais com tara (fêmeas cruzadas no abate)</label><input id="calc_tara_qtd" type="number" min="0" inputmode="numeric" value="0" oninput="calcularNegociacaoPecuaria()">
+            <div class="meta" style="margin-top:4px">A tara só é descontada desses animais. Use 0 se nenhuma fêmea estava cruzada.</div></div>
         </div>
         <div class="calc-resultados">
           <div class="calc-res"><div class="lbl">Peso líquido</div><div class="val" id="calc_res_liq">—</div><div class="sub" id="calc_res_liq_sub">Preencha todos os campos</div></div>
           <div class="calc-res"><div class="lbl">Peso médio / animal</div><div class="val" id="calc_res_medio">—</div><div class="sub" id="calc_res_medio_sub"></div></div>
           <div class="calc-res full"><div class="lbl">Valor financeiro total da operação</div><div class="val" id="calc_res_total">—</div></div>
         </div>
-        <div class="calc-formula"><b>Cálculo:</b> Y = PB/2 − PB × 1/2 × W/15 em kg · T = (V × Q)/15 em @ · L = (Y/15) − T em @ · Valor = L × preço/@</div>
+        <div class="calc-formula"><b>Cálculo:</b> Y = PB/2 − PB × 1/2 × W/15 em kg · T = (V × animais com tara)/15 em @ · L = (Y/15) − T em @ · Valor = L × preço/@</div>
       </div>`;
   };
 
