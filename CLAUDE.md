@@ -44,6 +44,9 @@ Dados: IndexedDB local + sincronização Supabase (tabela `sync_records`; novos 
 - Aplicação de medicamento (V144) passa sempre por `formAplicacao()`/`registrarAplicacaoEstoque()`: eventos com
   `aplicacaoId`, baixa no estoque (`insumo_mov` com `aplicacaoId`), custo `consumo_insumo` (Sanidade, `rateioLotes`)
   e partida D Custo de produção / C Estoque de insumos. Sem saldo, não aplica. Excluir evento ajusta tudo (hook no `del`).
+- Saldo de insumo (V177): recalcular só com `reconstruirInsumo(id, alteracao)` (mantém saldo de itens sem entrada).
+- Troca de lote (V177): sempre `moverAnimal(id, lote, data, hora)` — grava `loteDeId`/`loteParaId`, usados no
+  histórico de lote/pasto por data (`historicoLotesAnimal`, `caminhoDoAnimal`) e na Análise por propriedade.
 
 ## Recursos desativados
 - O módulo **Engorda e pesagens** foi desativado a pedido do dono na V129 (quer o app mais simples).
