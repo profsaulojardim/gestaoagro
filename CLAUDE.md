@@ -47,6 +47,9 @@ Dados: IndexedDB local + sincronização Supabase (tabela `sync_records`; novos 
 - Saldo de insumo (V177): recalcular só com `reconstruirInsumo(id, alteracao)` (mantém saldo de itens sem entrada).
 - Troca de lote (V177): sempre `moverAnimal(id, lote, data, hora)` — grava `loteDeId`/`loteParaId`, usados no
   histórico de lote/pasto por data (`historicoLotesAnimal`, `caminhoDoAnimal`) e na Análise por propriedade.
+- Animais de serviço (V178, cavalo/burro/cão): store `animais` com `servico:true`; `getAll("animais")` já os exclui
+  (use `getAll("animais",{servico:true})` para lê-los). Ficam FORA da contagem, lotação, UA e análise (pedido do dono).
+  Gastos: categoria "Animais de serviço", `apropriacaoTipo:"servico"`, `animalServicoId`.
 
 ## Recursos desativados
 - O módulo **Engorda e pesagens** foi desativado a pedido do dono na V129 (quer o app mais simples).
