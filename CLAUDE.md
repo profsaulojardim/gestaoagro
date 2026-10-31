@@ -31,8 +31,11 @@ Dados: IndexedDB local + sincronização Supabase (tabela `sync_records`; novos 
 - Testar antes (sintaxe com `node --check` em cada arquivo, `testes/conferir_arquivos.py`, fluxo no navegador
   headless e, se mexer na sincronização, `testes/sincronizacao_dois_aparelhos.js`) e conferir depois que o
   site publicado responde com a versão nova.
-- A cada versão, gerar também o .zip da cópia de teste (outra conta do GitHub, banco Supabase
-  `homosmdrqtdxtmmmnbpd`): mesmos arquivos, sem CLAUDE.md, trocando endereço e chave em `js/app/01-config-conta.js`.
+- A cada versão, atualizar também a cópia de teste: repositório `saulojardimspotify/gestaoagro3` (branch `main`,
+  GitHub Pages; profsaulojardim é colaborador e o app Claude está instalado lá — push direto, desde 31/10/2026).
+  Mesmos arquivos, sem CLAUDE.md, trocando endereço e chave do Supabase de teste (`homosmdrqtdxtmmmnbpd`,
+  `sb_publishable_FcTVOwopuWb8WbzJaqEE5A_GGO1g9Ve`) em `js/app/01-config-conta.js` e em
+  `testes/sincronizacao_dois_aparelhos.js`. Commit com a mesma mensagem `VN: ...`. O .zip só se o dono pedir.
 
 ## Cuidados conhecidos
 - Registros contábeis (`tipo: "partida_contabil"`) ficam na store `lancamentos`: toda lista/soma de
