@@ -2,10 +2,15 @@
 
 PWA publicado pelo GitHub Pages a partir da branch `main` de DOIS repositórios com o mesmo código:
 - **App em uso (produção, dados reais):** `saulojardimspotify/gestaoagro3` → https://saulojardimspotify.github.io/gestaoagro3/
-  — Supabase `homosmdrqtdxtmmmnbpd` (chave `sb_publishable_FcTVOwopuWb8WbzJaqEE5A_GGO1g9Ve`).
 - **App de teste:** `profsaulojardim/gestaoagro` (este repositório, onde se desenvolve) → https://profsaulojardim.github.io/gestaoagro/
-  — Supabase `qjpcccfexgxlykdzffpx` (chave `sb_publishable_IgESM3xZNVXrAokEYIHzWw_fbrZqHDx`).
-Dados: IndexedDB local + sincronização Supabase (tabela `sync_records`; novos campos vão no `payload`, sem mudar o banco).
+Dados: IndexedDB local + nuvem no **Firebase** (projeto `rebanho-2026`, Realtime Database + Auth por REST, V182; ver
+ARQUITETURA.md "Nuvem"). Os dois apps usam o MESMO Firebase; no app de teste o dono entra com OUTRO e-mail.
+Campos novos vão dentro dos registros; nada de store nova.
+
+**Migração em andamento (nov/2026):** V182 (Firebase) está só no app de teste. A produção continua na V181 com o
+Supabase até a Fase 4 do plano `docs/superpowers/plans/2026-11-20-migracao-firebase.md`. Até lá, NÃO publicar na
+produção sem o dono pedir (e, se for preciso, publicar a correção sobre a V181 com o Supabase de produção
+`homosmdrqtdxtmmmnbpd`, chave `sb_publishable_FcTVOwopuWb8WbzJaqEE5A_GGO1g9Ve`). Depois da Fase 4 este aviso sai.
 
 ## Versão (fazer SEMPRE, sem o dono pedir)
 1. Antes de publicar, consultar a versão que está no ar: `APP_VERSION` em `sw.js` na `main` dos dois repositórios
@@ -27,8 +32,7 @@ Dados: IndexedDB local + sincronização Supabase (tabela `sync_records`; novos 
 - `index.html` só tem a estrutura da página e a ordem dos scripts; visual em `css/estilo.css`; imagens em `img/`.
 - Núcleo em `js/app/` (por assunto); ajustes/substituições de funções em `js/modulos/`; `js/app/99-iniciar.js` por último.
 - Mudanças novas: preferir editar o arquivo do núcleo do assunto em vez de criar mais um módulo que substitui função.
-- Chave e endereço do Supabase: `js/app/01-config-conta.js` (é a única diferença entre o app de teste e o de produção,
-  junto com `testes/sincronizacao_dois_aparelhos.js`).
+- Configuração da nuvem (Firebase): `js/app/01-config-conta.js` — igual nos dois repositórios.
 
 ## Publicação
 - O dono autorizou publicar direto na `main`. Mensagem do commit em português, começando por `VN: ...`,
@@ -38,15 +42,14 @@ Dados: IndexedDB local + sincronização Supabase (tabela `sync_records`; novos 
   site publicado responde com a versão nova.
 - Ordem a cada versão: publicar primeiro aqui (`profsaulojardim/gestaoagro`, app de teste), conferir que o site de teste
   responde com a versão nova e, em seguida, levar os MESMOS arquivos para a produção `saulojardimspotify/gestaoagro3`
-  (push direto; a conta conectada ao Claude é colaboradora nos dois — desde 31/10/2026): sem CLAUDE.md, trocando endereço e
-  chave do Supabase para os de produção em `js/app/01-config-conta.js` e `testes/sincronizacao_dois_aparelhos.js`.
+  (push direto; a conta conectada ao Claude é colaboradora nos dois), sem CLAUDE.md e sem trocar nada.
   Mesma mensagem de commit `VN: ...`. Conferir também o site de produção. O .zip só se o dono pedir.
-  Nunca enviar para a produção o endereço/chave do banco de teste (nem o contrário).
+  (Ver o aviso "Migração em andamento" acima enquanto ele existir.)
 
 ## Cuidados conhecidos
 - Registros contábeis (`tipo: "partida_contabil"`) ficam na store `lancamentos`: toda lista/soma de
   lançamentos deve filtrá-los.
-- Não criar store nova no IndexedDB para sincronizar (o Supabase tem CHECK de `store_name`).
+- Não criar store nova no IndexedDB para sincronizar (a lista `SYNC_STORES` define o que vai para a nuvem).
 - Datas de fatos (compra, nascimento, pagamento, desmama) não podem ser no futuro.
 - Medicamentos/vacinas (V142) são itens da store `insumos` (grupo "gado", categorias em `CAT_MED_ESTOQUE`).
   A store `medicamentos` é legada: só é lida pela migração `migrarMedicamentosParaEstoque()`; não gravar nela.

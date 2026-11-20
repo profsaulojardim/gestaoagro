@@ -9,7 +9,7 @@ instalarHistoricoNavegacao();
 
 abrirDB().then(async()=>{
   // V60: primeiro abre a interface usando o IndexedDB local.
-  // Supabase/sincronização rodam depois e nunca podem deixar a tela em branco.
+  // Nuvem/sincronização rodam depois e nunca podem deixar a tela em branco.
   await numerarSemCodigo(); await migrarMedicamentosParaEstoque(); // V133/V142
   await renderSeguro();
   checarNotificacoes();

@@ -8,6 +8,7 @@ Preparação (uma vez): `npm i -g playwright` (o Chromium já precisa estar inst
 # na raiz do repositório
 python3 -m http.server 8765 &                 # serve o app
 python3 testes/conferir_arquivos.py           # index.html × sw.js × disco + css bem formado
+NODE_PATH=$(npm root -g) node testes/nuvem_firebase.js
 NODE_PATH=$(npm root -g) node testes/sincronizacao_dois_aparelhos.js
 NODE_PATH=$(npm root -g) node testes/navegacao_voltar.js
 NODE_PATH=$(npm root -g) node testes/animais_servico.js
@@ -15,7 +16,12 @@ NODE_PATH=$(npm root -g) node testes/venda_selecao_fotos.js
 NODE_PATH=$(npm root -g) node testes/escolha_mae.js
 ```
 
-`sincronizacao_dois_aparelhos.js` abre dois "aparelhos" com o mesmo usuário e um Supabase simulado em
+`firebase_simulado.js` (V182) é o Firebase simulado em memória usado pelos testes (login, renovação do token,
+Realtime Database com a regra `/contas/{uid}`); não é um teste. `nuvem_firebase.js` confere sessão e acesso ao
+banco, primeira entrada, chaves com ponto, listas vazias, telas de conta, sem rede, cópia na nuvem, perfil e
+conferência (rodar um caso só: `node testes/nuvem_firebase.js "perfil"`).
+
+`sincronizacao_dois_aparelhos.js` abre dois "aparelhos" com o mesmo usuário e o Firebase simulado em
 memória e confere 7 situações: criação, edição offline mais antiga (não pode sobrescrever a mais nova),
 edição offline mais nova (vale), criação offline, exclusão, exclusão antiga × edição nova e pendências.
 

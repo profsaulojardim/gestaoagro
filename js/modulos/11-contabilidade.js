@@ -1,7 +1,7 @@
 /* V115 — Livro Diário persistente. (V119: baixa por morte + estorno de partidas ao excluir operações)
    As partidas contábeis são gravadas como registros próprios dentro da store
    sincronizada `lancamentos` (tipo = "partida_contabil"). Isso mantém o histórico
-   no IndexedDB + Supabase sem criar um novo store_name e sem reabrir o problema
+   no IndexedDB + nuvem sem criar um novo store_name e sem reabrir o problema
    do CHECK sync_records_store_check.
 
    Regra: o evento operacional continua sendo a fonte da operação; a partida é
@@ -307,7 +307,7 @@
   }
 
   // Materializa automaticamente as partidas quando a operação é gravada.
-  // Usa a store já sincronizada `lancamentos`, evitando nova whitelist no Supabase.
+  // Usa a store já sincronizada `lancamentos`, sem criar store nova.
   put=async function(store,obj){
     if(store==='lancamentos'&&obj&&obj.tipo!==TIPO_PC){try{normalizarLiquidacao(obj);}catch(e){console.error('Liquidação V121:',e);}}
     const r=await putOriginal(store,obj);

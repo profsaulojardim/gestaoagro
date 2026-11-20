@@ -1,7 +1,7 @@
 # Gestão do Rebanho — arquitetura e organização dos arquivos
 
 PWA de arquivo estático (sem build), publicado pelo GitHub Pages a partir da branch `main`.
-Os dados ficam no aparelho (IndexedDB) e são sincronizados com o Supabase quando há internet.
+Os dados ficam no aparelho (IndexedDB) e são sincronizados com o Firebase Realtime Database (V182) quando há internet.
 
 ## Pastas
 
@@ -15,8 +15,6 @@ js/app/                 Núcleo do app, dividido por assunto (ver tabela abaixo)
 js/modulos/             Módulos que acrescentam ou ajustam funções do núcleo (carregados depois dele)
 desativados/            Código guardado e NÃO carregado (Engorda e pesagens — ver LEIA-ME)
 testes/                 Testes automáticos no navegador (não fazem parte do app publicado)
-.github/workflows/      manter-banco-ativo.yml: chama todo dia a função manter_ativo() do Supabase para o plano gratuito não pausar
-                        o banco; lê endereço/chave de js/app/01-config-conta.js (cada repositório consulta o próprio banco)
 ARQUITETURA.md          Este arquivo
 CLAUDE.md               Regras de trabalho (versão, publicação, cuidados)
 ```
@@ -41,7 +39,7 @@ os arquivos carregam sem `?v` e a versão é lida direto do `sw.js`.
 
 | Arquivo | Conteúdo |
 |---|---|
-| 01-config-conta.js | Endereço e chave do Supabase, sessão (login), `sbFetch`, permissões de uso |
+| 01-config-conta.js | Configuração do Firebase (`FIREBASE_CONFIG`), sessão (login), `fbAuth`, `fbFetch` (com renovação do token), permissões de uso |
 | 02-banco-local.js | IndexedDB: `abrirDB`, `get`, `getAll`, `put`, `del` (com metadados de sincronização); `getAll("animais")` traz só o rebanho, `getAll("animais",{servico:true})` os animais de serviço |
 | 03-utilidades-constantes.js | Datas, moeda, área em alqueire (`alqTxt`, `areaDoCampo`; banco segue em ha), rótulos de animal, raças, categorias, estoque/medicamentos, migração de medicamentos |
 | 04-interface-base.js | `registrarEvento`/`excluirEvento`, ícones SVG (`ico`), menu inferior e `render()` das abas, tela de login |
@@ -91,7 +89,7 @@ os arquivos carregam sem `?v` e a versão é lida direto do `sw.js`.
 ## Dados e sincronização
 
 - Stores do IndexedDB que sincronizam: `SYNC_STORES` em `02-banco-local.js`. **Não criar store nova**
-  (o Supabase tem CHECK de `store_name`); campos novos vão dentro dos registros (payload).
+  (a lista de stores define o que vai para a nuvem); campos novos vão dentro dos registros (payload).
 - Cada registro tem `updated_at`, `deleted_at` (exclusão lógica), `sync_status` e `sync_version`.
 - Sincronização (`09-perfil-nuvem-sincronizacao.js`): envia pendências → recebe novidades.
   Regra de conflito: **vale a versão mais nova do registro inteiro** (pelo `updated_at`). Antes de
@@ -117,14 +115,22 @@ os arquivos carregam sem `?v` e a versão é lida direto do `sw.js`.
 3. Incluir o caminho na lista `ARQUIVOS` do `sw.js`, na mesma ordem.
 4. Rodar `python3 testes/conferir_arquivos.py` (confere index × sw.js × disco).
 
-## Manter o banco ativo (Supabase gratuito)
-O Supabase pausa o projeto após 7 dias sem consultas reais. Respostas "acesso negado" (401) não contam.
-A tarefa `.github/workflows/manter-banco-ativo.yml` chama todo dia uma função que só responde 'ok'.
-Ela precisa ser criada UMA VEZ em cada banco (Supabase › SQL Editor › New query › Run):
+## Nuvem (Firebase, V182)
+Projeto único `rebanho-2026` (plano Spark, gratuito, não pausa). Login: Firebase Auth por e-mail/senha (REST).
+Banco: Realtime Database (REST, sem biblioteca), regras "cada conta só lê e grava em `/contas/{uid}`":
 
-```sql
-create or replace function public.manter_ativo()
-returns text language sql stable security invoker set search_path = ''
-as $$ select 'ok'::text $$;
-grant execute on function public.manter_ativo() to anon, authenticated;
+```json
+{ "rules": { "contas": { "$uid": {
+  ".read": "auth != null && auth.uid === $uid", ".write": "auth != null && auth.uid === $uid",
+  "registros": { "$store": { ".indexOn": ["record_updated_at"] } } } } } }
 ```
+
+Árvore de cada conta: `fazenda` (o `organization_id` que os registros do aparelho já usam), `manifesto/{store}/{chave}`
+= `{u, v, d}` (leve, diz o que mudou), `registros/{store}/{chave}` = `{p: registro em texto JSON, u, v, d, dev}`,
+`backups/{aparelho}`, `perfil`. Chaves com `. # $ [ ] / %` são codificadas por `chaveFirebase()`/`idDaChave()`.
+O registro vai como texto JSON porque o Firebase apaga listas vazias e campos `null`.
+App de teste e app em uso usam o MESMO projeto: no app de teste entra-se com OUTRO e-mail (dados separados por conta).
+Primeira entrada de um aparelho numa conta: tudo do aparelho fica pendente e sobe; depois abre a "Conferência"
+(aparelho × nuvem), que também fica em Perfil › Conta e nuvem › Conferir dados na nuvem.
+Desenho e plano da migração: `docs/superpowers/specs/2026-11-20-migracao-firebase-design.md` e
+`docs/superpowers/plans/2026-11-20-migracao-firebase.md`.

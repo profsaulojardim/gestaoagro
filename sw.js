@@ -5,8 +5,8 @@
      navegador a baixar a versão nova e é de onde vem o "Versão N" da tela inicial.
    Regras de versão e de arquivos novos: ver CLAUDE.md e ARQUITETURA.md. */
 
-const CACHE = "rebanho-v181-escolha-da-mae";
-const APP_VERSION = "181";
+const CACHE = "rebanho-v182-nuvem-firebase";
+const APP_VERSION = "182";
 
 // Todos os arquivos do app (mesma ordem do index.html). Arquivo .js novo: incluir aqui E no index.html.
 const ARQUIVOS = [
@@ -66,7 +66,7 @@ async function paginaAtual(request) {
 self.addEventListener("fetch", e => {
   if (e.request.method !== "GET") return;
   const url = new URL(e.request.url);
-  if (url.origin !== self.location.origin) return; // Supabase e outros domínios: direto na rede
+  if (url.origin !== self.location.origin) return; // Firebase e outros domínios: direto na rede
   // Página: sempre tenta a versão mais nova; sem internet, usa a última guardada.
   if (e.request.mode === "navigate") {
     e.respondWith(paginaAtual(e.request).catch(async () => await caches.match("./index.html") || Response.error()));
