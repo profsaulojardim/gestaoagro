@@ -21,13 +21,13 @@ não pausa por inatividade e não pede cartão.
 ## Anti-metas (seria fracasso mesmo "funcionando")
 - Perder ou duplicar registros; um aparelho sobrescrever edição mais nova de outro.
 - O app deixar de abrir/lançar sem internet.
-- Gravar endereço/chave do Firebase de teste no app em uso (ou o contrário).
+- Misturar dados de teste com os reais (por isso, contas diferentes no app de teste e no app em uso).
 
 ## Restrições
 - Só um usuário; app instalado no celular e no computador (cada um sobe seus dados na virada).
 - Senhas do Supabase não podem ser levadas: o dono cria senha nova no Firebase (mesmo e-mail).
 - Spark: Realtime Database 1 GB guardado, 10 GB/mês de download, 100 conexões simultâneas.
-- Mesmo código nos dois repositórios; só `js/app/01-config-conta.js` (e o teste de sincronização) diferem.
+- Mesmo código nos dois repositórios (com o Firebase, inclusive a configuração da nuvem).
 - Sem store nova no IndexedDB; arquivos organizados conforme ARQUITETURA.md.
 
 ## Caminhos considerados
@@ -39,8 +39,14 @@ não pausa por inatividade e não pede cartão.
    o modo offline; ganho pequeno, risco maior.
 
 ## Desenho (decidido)
-**Firebase (feito pelo dono, Fase 1):** dois projetos ("Rebanho Teste" e "Rebanho"), login por e-mail/senha
-ativado, Realtime Database criado (us-central1, modo bloqueado) com as regras abaixo, app Web registrado.
+**Firebase (feito pelo dono, Fase 1):** UM projeto só — `rebanho-2026` (conta Google pessoal, plano Spark), login
+por e-mail/senha ativado (login com Google desligado), domínios autorizados `saulojardimspotify.github.io` e
+`profsaulojardim.github.io`, Realtime Database `https://rebanho-2026-default-rtdb.firebaseio.com` (us-central1, modo
+bloqueado) com as regras abaixo, app Web "Rebanho web" registrado (apiKey AIzaSyCiIE3LgZbyUcUbkYzcTuCDw1a2mPnXHfE —
+chave pública de app web; a proteção é feita pelas regras).
+**App de teste e app em uso usam o MESMO Firebase.** A separação é por conta: no app de teste o dono entra com OUTRO
+e-mail (dados de teste ficam em outra "gaveta" `/contas/{uid}`); no app em uso, com o e-mail real. Nunca entrar no
+app de teste com o e-mail real. Os dois repositórios passam a ter o mesmo `01-config-conta.js` para o Firebase.
 
 Regras do Realtime Database:
 ```json
@@ -76,11 +82,11 @@ Gravação de registro + manifesto numa única chamada (PATCH multi-caminho em `
   enviados (conflito: vale o mais novo, regra atual); ao fim, tela de **conferência** (contagem por tipo no
   aparelho × na nuvem).
 - Mensagem clara para falha de rede no lugar de "Load failed".
-- Teste automático de sincronização entre dois aparelhos adaptado para o Firebase (com um Firebase falso local
-  ou o projeto de teste).
+- Teste automático de sincronização entre dois aparelhos adaptado para o Firebase, com um Firebase falso local
+  (o ambiente de desenvolvimento não alcança os servidores do Firebase).
 
 **Fases e volta atrás:** 0 cópias em arquivo (feito) · 1 criar Firebase · 2 adaptar app e publicar só no teste ·
-3 primeira entrada e conferência no teste, uso por alguns dias · 4 publicar no app em uso, entrar em cada
+3 primeira entrada e conferência no app de teste (com o e-mail de teste), uso por alguns dias · 4 publicar no app em uso, entrar em cada
 aparelho, conferência · 5 (semanas depois) remover a tarefa `manter-banco-ativo` e, se o dono quiser, os projetos do Supabase.
 Até a fase 5, voltar = republicar a versão anterior (Supabase intacto).
 
