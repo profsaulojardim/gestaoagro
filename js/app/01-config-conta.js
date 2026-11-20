@@ -14,7 +14,7 @@ const FIREBASE_CONFIG={
   databaseURL:"https://rebanho-2026-default-rtdb.firebaseio.com",
   projectId:"rebanho-2026"
 };
-const CLOUD_APP_VERSION="182";
+const CLOUD_APP_VERSION="183";
 const AUTH_STORAGE_KEY="rebanho_firebase_session";
 const MSG_SEM_CONEXAO="Sem conexão com o servidor. Verifique a internet e tente de novo.";
 

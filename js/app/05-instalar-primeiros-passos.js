@@ -153,7 +153,8 @@ async function salvarPassoInicial(k){
     if(!nome)return alert("Informe o nome da propriedade.");
     await put("propriedades",{id:uid(),nome,local:val("onb_local"),criadoEm:Date.now()});
   }else if(k==="marca"){
-    const sigla=val("onb_sigla");if(!sigla)return alert("Informe a sigla da marca.");
+    const sigla=val("onb_sigla").trim();if(!sigla)return alert("Informe a sigla da marca.");
+    if(await marcaComMesmaSigla(sigla))return alert(`Já existe a marca "${sigla}". Ela já vale para os seus animais.`);
     await put("marcas",{id:uid(),sigla,nome:val("onb_dono")});
   }else if(k==="lote"){
     if(!nome)return alert("Dê um nome ao lote.");

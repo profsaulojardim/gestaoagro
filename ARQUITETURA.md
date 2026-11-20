@@ -131,7 +131,9 @@ Banco: Realtime Database (REST, sem biblioteca), regras "cada conta só lê e gr
 leitura, a sincronização não baixa os manifestos — economia no limite gratuito de 10 GB/mês de download). Chaves com `. # $ [ ] / %` são codificadas por `chaveFirebase()`/`idDaChave()`.
 O registro vai como texto JSON porque o Firebase apaga listas vazias e campos `null`.
 App de teste e app em uso usam o MESMO projeto: no app de teste entra-se com OUTRO e-mail (dados separados por conta).
-Primeira entrada de um aparelho numa conta: tudo do aparelho fica pendente e sobe; depois abre a "Conferência"
+Primeira entrada de um aparelho numa conta (`prepararContaLocal(modo)`): se a nuvem já tem dados e o aparelho também,
+o app pergunta (V183) "Usar os dados da nuvem" (apaga do aparelho o que não veio da nuvem) ou "Juntar"; senão,
+tudo do aparelho fica pendente e sobe. Depois abre a "Conferência"
 (aparelho × nuvem), que também fica em Perfil › Conta e nuvem › Conferir dados na nuvem.
 Desenho e plano da migração: `docs/superpowers/specs/2026-11-20-migracao-firebase-design.md` e
 `docs/superpowers/plans/2026-11-20-migracao-firebase.md`.

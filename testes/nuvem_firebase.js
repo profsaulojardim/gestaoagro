@@ -166,6 +166,54 @@ caso('sincronização sem novidades não baixa manifestos',async(b,fb)=>{
   if(n!=='Mudou no 2')throw new Error('não recebeu: '+n);
 });
 
+// ---------- V183: primeira entrada quando a nuvem já tem dados ----------
+async function nuvemComAnimal(b,fb){ // aparelho A já enviou o animal n1
+  const A=await abrirAparelho(b,fb,fb.contaTeste('u1','t@t.com','senha123'));
+  await A.evaluate(async()=>{await put('animais',{id:'n1',codigo:1,nome:'Da nuvem',sexo:'F',status:'Ativo'});});
+  await sincronizar(A);
+}
+async function aparelhoBEntrando(b,fb,comDados){
+  const B=await abrirAparelho(b,fb,null);
+  await B.evaluate(async c=>{const m=await garantirSyncMeta();m.active_org_id='org-b';await putRaw('sync_meta',m);
+    if(c)await putRaw('animais',{id:'b1',codigo:2,nome:'Só no B',sexo:'M',status:'Ativo',organization_id:'org-b',sync_status:'synced',updated_at:'2026-10-01T10:00:00.000Z'});
+    formEntrarCloud();},comDados);
+  await B.fill('#cl_email','t@t.com');await B.fill('#cl_senha','senha123');
+  await B.evaluate(()=>entrarCloud());await B.waitForTimeout(900);
+  return B;
+}
+const janela=p=>p.evaluate(()=>document.getElementById('ov').classList.contains('on')?document.getElementById('md').innerText:'');
+const animaisLocais=p=>p.evaluate(async()=>(await getAll('animais')).map(a=>a.id).sort().join(','));
+const animaisNuvem=fb=>Object.keys(fb.ler('/contas/u1/manifesto/animais')||{}).sort().join(',');
+caso('nuvem com dados: pergunta e "usar os da nuvem" descarta os do aparelho',async(b,fb)=>{
+  await nuvemComAnimal(b,fb);const B=await aparelhoBEntrando(b,fb,true);
+  if(!/Usar os dados da nuvem/.test(await janela(B)))throw new Error('não perguntou: '+(await janela(B)).slice(0,120));
+  if(animaisNuvem(fb)!=='n1')throw new Error('enviou antes de escolher: '+animaisNuvem(fb));
+  await B.evaluate(()=>continuarPrimeiraEntrada('nuvem'));await B.waitForTimeout(900);
+  if(await animaisLocais(B)!=='n1')throw new Error('aparelho: '+await animaisLocais(B));
+  if(animaisNuvem(fb)!=='n1')throw new Error('nuvem: '+animaisNuvem(fb));
+});
+caso('nuvem com dados: "juntar" envia os dois',async(b,fb)=>{
+  await nuvemComAnimal(b,fb);const B=await aparelhoBEntrando(b,fb,true);
+  await B.evaluate(()=>continuarPrimeiraEntrada('juntar'));await B.waitForTimeout(900);
+  if(await animaisLocais(B)!=='b1,n1')throw new Error('aparelho: '+await animaisLocais(B));
+  if(animaisNuvem(fb)!=='b1,n1')throw new Error('nuvem: '+animaisNuvem(fb));
+});
+caso('aparelho vazio não pergunta e recebe a nuvem',async(b,fb)=>{
+  await nuvemComAnimal(b,fb);const B=await aparelhoBEntrando(b,fb,false);
+  if(/Usar os dados da nuvem/.test(await janela(B)))throw new Error('perguntou sem precisar');
+  if(await animaisLocais(B)!=='n1')throw new Error('aparelho: '+await animaisLocais(B));
+});
+// ---------- V183: marca com sigla repetida ----------
+caso('marca com sigla repetida é bloqueada',async(b,fb)=>{
+  const p=await abrirAparelho(b,fb,fb.contaTeste());
+  await p.evaluate(async()=>{await put('marcas',{id:'m1',sigla:'SJ',nome:'Saulo'});await formMarca();});
+  await p.fill('#m_sig',' sj ');await p.evaluate(()=>salvarMarca());
+  const n=await p.evaluate(async()=>(await getAll('marcas')).length);
+  if(n!==1||!p.dialogos.some(d=>/Já existe/.test(d)))throw new Error('marcas: '+n+' / '+p.dialogos.join('|'));
+  await p.evaluate(async()=>{await formMarca('m1');});await p.fill('#m_nome','Saulo J');await p.evaluate(()=>salvarMarca('m1'));
+  if(await p.evaluate(async()=>(await get('marcas','m1')).nome)!=='Saulo J')throw new Error('não deixou editar a própria marca');
+});
+
 (async()=>{
   const b=await chromium.launch({args:['--no-proxy-server']});
   const so=process.argv[2],falhas=[];

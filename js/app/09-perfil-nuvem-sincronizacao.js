@@ -166,8 +166,15 @@ async function formMarca(id){
       <button class="btn" onclick="salvarMarca(${m?`'${m.id}'`:""})">Salvar</button></div>
     ${m?`<button class="btn-fant" style="margin-top:8px;color:var(--perigo)" onclick="apagarMarca('${m.id}')">Apagar marca</button>`:""}`);
 }
+// V183: sigla igual (sem diferenciar maiúsculas/espaços) a outra marca da fazenda não é aceita
+async function marcaComMesmaSigla(sigla,exceto){
+  const k=String(sigla||"").trim().toUpperCase();
+  return (await getAll("marcas")).find(m=>m.id!==exceto&&String(m.sigla||"").trim().toUpperCase()===k)||null;
+}
 async function salvarMarca(id){
-  const s=val("m_sig");if(!s)return alert("Informe a sigla.");
+  const s=val("m_sig").trim();if(!s)return alert("Informe a sigla.");
+  const dup=await marcaComMesmaSigla(s,id);
+  if(dup)return alert(`Já existe a marca "${dup.sigla}"${dup.nome?` (${dup.nome})`:""}. Use a marca existente ou outra sigla.`);
   const m=id?await get("marcas",id):{id:uid()};
   m.sigla=s;m.nome=val("m_nome");
   await put("marcas",m);fechar();recarregarTelaAtual();
@@ -263,7 +270,8 @@ async function entrarCloud(){
   _authOcupado=true;travarBotoesConta(true);
   try{
     saveAuthSession(sessaoDeRespostaAuth(await fbAuth("signInWithPassword",{email,password,returnSecureToken:true})));
-    await prepararContaLocal();
+    try{await prepararContaLocal();}
+    catch(e){if(e.codigo==="ESCOLHER_PRIMEIRA_ENTRADA")return perguntarPrimeiraEntrada();throw e;}
     await sincronizarPerfilCloud();
     await sincronizarAgora({silencioso:true});
     fechar(); await irAba("inicio");
@@ -287,7 +295,8 @@ async function criarContaCloud(){
     saveAuthSession(sessaoDeRespostaAuth(await fbAuth("signUp",{email,password,returnSecureToken:true}),nome));
     const atual=(await fbFetch("/perfil"))||{};
     await fbFetch("/perfil",{method:"PUT",body:{...atual,full_name:atual.full_name||nome,updated_at:agoraISO()}});
-    await prepararContaLocal();
+    try{await prepararContaLocal();}
+    catch(e){if(e.codigo==="ESCOLHER_PRIMEIRA_ENTRADA")return perguntarPrimeiraEntrada();throw e;}
     await sincronizarPerfilCloud();
     await sincronizarAgora({silencioso:true});
     fechar(); await irAba("inicio");
@@ -338,7 +347,10 @@ async function cloudDeviceId(){
   const m=await garantirSyncMeta(); return m.device_id;
 }
 
-async function prepararContaLocal(){
+/* modo (só na primeira entrada do aparelho na conta, V183): "juntar" (envia o que está no aparelho) ou "nuvem"
+   (apaga do aparelho o que não veio da nuvem e baixa a nuvem). Sem modo: se o aparelho tem dados e a nuvem também,
+   lança um erro com codigo "ESCOLHER_PRIMEIRA_ENTRADA" para a pessoa escolher (perguntarPrimeiraEntrada). */
+async function prepararContaLocal(modo){
   const user=await authUser(); if(!user)return null;
   const meta=await garantirSyncMeta();
 
@@ -355,13 +367,22 @@ async function prepararContaLocal(){
   // anterior ou sem fazenda) passa para a fazenda da conta e fica pendente, para subir para a nuvem nova.
   // Registros de outra fazenda que estejam no aparelho não são tocados.
   if(meta.firebase_uid!==user.id){
-    for(const s of SYNC_STORES){
-      for(const o of await getAllRaw(s)){
-        if(o.organization_id&&o.organization_id!==org&&o.organization_id!==orgAnterior)continue;
-        o.organization_id=org;
-        o.sync_status=o.sync_status&&o.sync_status!=="pending_create"?"pending_update":"pending_create";
-        await putRaw(s,o);
-      }
+    const doAparelho=[];
+    for(const s of SYNC_STORES)for(const o of await getAllRaw(s)){
+      if(o.organization_id&&o.organization_id!==org&&o.organization_id!==orgAnterior)continue;
+      doAparelho.push([s,o]);
+    }
+    // V183: nuvem já com dados (outro aparelho entrou antes) + aparelho com dados → a pessoa escolhe, para
+    // dados diferentes não se somarem sem querer (ex.: segunda marca/propriedade repetida).
+    if(!modo&&doAparelho.some(([,o])=>!o.deleted_at)&&await nuvemTemDados()){
+      const e=new Error("Falta escolher o que fazer com os dados deste aparelho (Perfil › Sincronizar agora).");
+      e.codigo="ESCOLHER_PRIMEIRA_ENTRADA";throw e;
+    }
+    for(const [s,o] of doAparelho){
+      if(modo==="nuvem"){await hardDel(s,o.id);continue;}
+      o.organization_id=org;
+      o.sync_status=o.sync_status&&o.sync_status!=="pending_create"?"pending_update":"pending_create";
+      await putRaw(s,o);
     }
     meta.firebase_uid=user.id;
     meta.nuvem_alterado_em=null; // conta nova neste aparelho: o próximo pull baixa tudo
@@ -372,6 +393,31 @@ async function prepararContaLocal(){
   meta.active_org_id=org;
   await putRaw("sync_meta",meta);
   return org;
+}
+
+async function nuvemTemDados(){
+  const r=await fbFetch("/manifesto",{query:{shallow:"true"}});
+  return !!(r&&Object.keys(r).length);
+}
+function perguntarPrimeiraEntrada(){
+  abrir(`<h2>A nuvem já tem dados</h2>
+    <div class="meta">Esta conta já recebeu dados de outro aparelho, e este aparelho também tem dados guardados. O que fazer?</div>
+    <button class="btn" style="margin-top:16px" onclick="continuarPrimeiraEntrada('nuvem')">Usar os dados da nuvem (recomendado)</button>
+    <div class="meta" style="margin:-4px 2px 12px">Este aparelho fica igual aos outros. O que estiver só aqui é apagado deste aparelho.</div>
+    <button class="btn btn-sec" onclick="continuarPrimeiraEntrada('juntar')">Juntar com os dados deste aparelho</button>
+    <div class="meta" style="margin:-4px 2px 12px">Envia também o que está aqui. Se forem cadastros diferentes, tudo se soma (pode repetir propriedade, marca, animais).</div>
+    <button class="btn-fant" onclick="exportar()">⬇ Baixar cópia deste aparelho antes</button>
+    <button class="btn-fant" onclick="fechar();confirmarLogout()">Sair da conta</button>`);
+}
+async function continuarPrimeiraEntrada(modo){
+  if(modo==="nuvem"&&!confirm("Usar os dados da nuvem?\n\nO que estiver só neste aparelho será apagado dele. Se tiver dúvida, toque em Cancelar e baixe uma cópia antes."))return;
+  try{
+    await prepararContaLocal(modo);
+    await sincronizarPerfilCloud();
+    await sincronizarAgora({silencioso:true});
+    fechar(); await irAba("inicio");
+    await mostrarConferenciaSePendente();
+  }catch(e){alert("Não foi possível concluir: "+traduzirErroAuth(e.message));}
 }
 
 function payloadSync(o){
@@ -556,6 +602,7 @@ async function sincronizarAgora({silencioso=false}={}){
   }catch(e){
     _syncLastError=e.message||String(e);
     atualizarStatusSyncUI("erro");
+    if(e.codigo==="ESCOLHER_PRIMEIRA_ENTRADA"){if(!silencioso)perguntarPrimeiraEntrada();return null;}
     if(!silencioso)alert("Não foi possível sincronizar: "+_syncLastError);
     return null;
   }finally{

@@ -19,7 +19,8 @@ NODE_PATH=$(npm root -g) node testes/escolha_mae.js
 `firebase_simulado.js` (V182) é o Firebase simulado em memória usado pelos testes (login, renovação do token,
 Realtime Database com a regra `/contas/{uid}`); não é um teste. `nuvem_firebase.js` confere sessão e acesso ao
 banco, primeira entrada, chaves com ponto, listas vazias, telas de conta, sem rede, cópia na nuvem, perfil e
-conferência (rodar um caso só: `node testes/nuvem_firebase.js "perfil"`).
+conferência, a pergunta da primeira entrada quando a nuvem já tem dados (V183) e a marca com sigla repetida
+(rodar um caso só: `node testes/nuvem_firebase.js "perfil"`).
 
 `sincronizacao_dois_aparelhos.js` abre dois "aparelhos" com o mesmo usuário e o Firebase simulado em
 memória e confere 7 situações: criação, edição offline mais antiga (não pode sobrescrever a mais nova),
