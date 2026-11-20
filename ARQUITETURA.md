@@ -127,7 +127,8 @@ Banco: Realtime Database (REST, sem biblioteca), regras "cada conta só lê e gr
 
 Árvore de cada conta: `fazenda` (o `organization_id` que os registros do aparelho já usam), `manifesto/{store}/{chave}`
 = `{u, v, d}` (leve, diz o que mudou), `registros/{store}/{chave}` = `{p: registro em texto JSON, u, v, d, dev}`,
-`backups/{aparelho}`, `perfil`. Chaves com `. # $ [ ] / %` são codificadas por `chaveFirebase()`/`idDaChave()`.
+`backups/{aparelho}`, `perfil` e `alteradoEm` (hora do servidor da última gravação: se não mudou desde a última
+leitura, a sincronização não baixa os manifestos — economia no limite gratuito de 10 GB/mês de download). Chaves com `. # $ [ ] / %` são codificadas por `chaveFirebase()`/`idDaChave()`.
 O registro vai como texto JSON porque o Firebase apaga listas vazias e campos `null`.
 App de teste e app em uso usam o MESMO projeto: no app de teste entra-se com OUTRO e-mail (dados separados por conta).
 Primeira entrada de um aparelho numa conta: tudo do aparelho fica pendente e sobe; depois abre a "Conferência"

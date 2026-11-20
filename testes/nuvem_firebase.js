@@ -150,6 +150,22 @@ caso('conferência bate após primeira entrada',async(b,fb)=>{
   if(await p.evaluate(async()=>(await garantirSyncMeta()).conferencia_pendente))throw new Error('marca de conferência não zerou');
 });
 
+// ---------- Revisão final: economia de download ----------
+caso('sincronização sem novidades não baixa manifestos',async(b,fb)=>{
+  const p=await abrirAparelho(b,fb,fb.contaTeste());
+  await p.evaluate(async()=>{await put('animais',{id:'e1',codigo:1,nome:'E',sexo:'F',status:'Ativo'});});
+  await sincronizar(p);await sincronizar(p); // a 2ª ainda pode baixar (a 1ª enviou)
+  const antes=fb.chamadas.length;await sincronizar(p);
+  const man=fb.chamadas.slice(antes).filter(c=>c.tipo==='banco'&&/\/manifesto\//.test(c.caminho)).length;
+  if(man)throw new Error('baixou manifestos '+man+'x sem novidade');
+  // novidade de outro aparelho é percebida
+  const p2=await abrirAparelho(b,fb,fb.contaTeste());await sincronizar(p2);
+  await p2.evaluate(async()=>{const a=await get('animais','e1');a.nome='Mudou no 2';await put('animais',a);});await sincronizar(p2);
+  await sincronizar(p);
+  const n=await p.evaluate(async()=>(await get('animais','e1')).nome);
+  if(n!=='Mudou no 2')throw new Error('não recebeu: '+n);
+});
+
 (async()=>{
   const b=await chromium.launch({args:['--no-proxy-server']});
   const so=process.argv[2],falhas=[];

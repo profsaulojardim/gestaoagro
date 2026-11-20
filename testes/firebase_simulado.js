@@ -39,6 +39,7 @@ function gravar(raiz, ps, valor) {
   for (const p of ps.slice(0, -1)) { if (no[p] == null || typeof no[p] !== 'object') no[p] = {}; no = no[p]; }
   const ult = ps[ps.length - 1];
   if (valor === null || valor === undefined) delete no[ult];
+  else if (valor && typeof valor === 'object' && valor['.sv'] === 'timestamp') no[ult] = Date.now(); // valor do servidor
   else no[ult] = JSON.parse(JSON.stringify(valor)); // como o Firebase: guarda uma cópia
 }
 

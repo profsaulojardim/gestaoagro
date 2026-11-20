@@ -316,6 +316,7 @@ async function sairCloud(){
   const m=await garantirSyncMeta();
   m.active_user_id=null;
   m.active_org_id=null;
+  m.nuvem_alterado_em=null;
   await putRaw("sync_meta",m);
   aba="inicio";
   document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("ativo",x.dataset.aba==="inicio"));
@@ -363,6 +364,7 @@ async function prepararContaLocal(){
       }
     }
     meta.firebase_uid=user.id;
+    meta.nuvem_alterado_em=null; // conta nova neste aparelho: o próximo pull baixa tudo
     meta.legacy_claimed_org_id=org;
     meta.conferencia_pendente=true;
   }
@@ -445,6 +447,7 @@ async function pushPendentes(org,user,device){
         mudancas[`registros/${s}/${k}`]={p:JSON.stringify(payloadSync(o)),u,v,d,dev:device};
         mudancas[`manifesto/${s}/${k}`]={u,v,d};
       }
+      mudancas.alteradoEm={".sv":"timestamp"}; // marca "a nuvem mudou" (o pull dos outros aparelhos olha só ela)
       await fbFetch("",{method:"PATCH",body:mudancas});
       for(const o of lote){
         const atual=await getRaw(s,o.id);
@@ -465,6 +468,10 @@ async function pullCloud(org){
      pelo updated_at/sync_version e só baixa o registro completo do que realmente mudou. Cobre inserções,
      edições e exclusões. Muitos registros (> 40, ex.: aparelho novo) → baixa a store inteira de uma vez. */
   let aplicados=0,consultados=0;
+  // Economia de download (plano gratuito: 10 GB/mês): se a marca "alteradoEm" da nuvem é a mesma da última
+  // leitura, nada mudou lá — não baixa os manifestos (a sincronização automática roda a cada 30 s).
+  const marca=await fbFetch("/alteradoEm"),metaIni=await garantirSyncMeta();
+  if(marca!=null&&metaIni.nuvem_alterado_em===marca)return {aplicados:0,consultados:0,cursor:metaIni.last_server_sync_at};
   for(const store of SYNC_STORES){
     const manifesto=(await fbFetch("/manifesto/"+store))||{};
     const chaves=Object.keys(manifesto);
@@ -491,6 +498,7 @@ async function pullCloud(org){
   }
   const meta=await garantirSyncMeta();
   meta.last_server_sync_at=agoraISO();
+  meta.nuvem_alterado_em=marca;
   await putRaw("sync_meta",meta);
   return {aplicados,consultados,cursor:meta.last_server_sync_at};
 }
