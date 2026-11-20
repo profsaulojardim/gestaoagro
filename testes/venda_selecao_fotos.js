@@ -4,7 +4,7 @@ const {chromium}=require('playwright');
 const PORT=process.env.PORT||'8765';
 (async()=>{const b=await chromium.launch({args:['--no-proxy-server','--host-resolver-rules=MAP *.supabase.co 127.0.0.1:9']});
 const ctx=await b.newContext({serviceWorkers:'block',viewport:{width:390,height:844},deviceScaleFactor:2});
-await ctx.addInitScript(()=>localStorage.setItem('rebanho_supabase_session',JSON.stringify({access_token:'x',user:{id:'u1',email:'s@t.com'}})));
+await ctx.addInitScript(()=>localStorage.setItem('rebanho_firebase_session',JSON.stringify({idToken:'x',refreshToken:'r',expiresAt:Date.now()+3600e3,user:{id:'u1',email:'t@t.com'}})));
 const p=await ctx.newPage();const errs=[],dl=[];p.on('pageerror',e=>errs.push(e.message));p.on('dialog',d=>{dl.push(d.message().slice(0,90));d.accept()});
 await p.goto(`http://localhost:${PORT}/index.html`);await p.waitForTimeout(1500);
 await p.evaluate(async()=>{
