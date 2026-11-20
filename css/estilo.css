@@ -566,3 +566,11 @@
 .mae-painel{margin-top:8px;padding:10px;border:1px solid var(--linha);border-radius:14px;background:#f7faf8}
 .mae-painel input[type=search]{margin:0 0 8px}
 .mae-cards{max-height:46vh}
+
+/* ======================= Conferência aparelho × nuvem (V182) — js/app/09-perfil-nuvem-sincronizacao.js ======================= */
+.conf-tabela{width:100%;border-collapse:collapse;margin:12px 0;font-size:15px}
+.conf-tabela th,.conf-tabela td{padding:8px 6px;border-bottom:1px solid var(--linha);text-align:left}
+.conf-tabela th:not(:first-child),.conf-tabela td:not(:first-child){text-align:right;width:80px}
+.conf-tabela tr.conf-dif td{color:var(--perigo);font-weight:700}
+.conf-ok{background:#f3faf5;border-left:4px solid var(--verde);box-shadow:none}
+.conf-aviso{background:#fff2ee;border-left:4px solid var(--perigo);box-shadow:none}

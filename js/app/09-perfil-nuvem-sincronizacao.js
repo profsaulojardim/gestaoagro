@@ -105,7 +105,7 @@ async function telaPerfil(){
   renderContaNuvem();
 }
 
-/* ---------- Conta Supabase / backup em nuvem ---------- */
+/* ---------- Conta na nuvem (Firebase) / backup em nuvem ---------- */
 async function renderContaNuvem(){
   const box=document.getElementById("cloudAccountBox"); if(!box)return;
   const user=await authUser();
@@ -128,6 +128,7 @@ async function renderContaNuvem(){
       <div class="nota-recuperar">⚠️ <strong>A recuperação substitui os dados deste aparelho.</strong></div>
     </div>
     <div class="cloud-note">A sincronização mantém os dados iguais entre aparelhos. A cópia de segurança é uma proteção a mais para recuperar dados.</div>
+    <button class="btn-fant" style="margin-top:8px" onclick="mostrarConferencia(null)">🔎 Conferir dados na nuvem</button>
     <button class="btn btn-perigo" style="margin-top:14px;margin-bottom:0" onclick="confirmarLogout()">Sair da conta</button>
   </div>`;
   atualizarStatusSyncUI();
@@ -265,7 +266,8 @@ async function entrarCloud(){
     await prepararContaLocal();
     await sincronizarPerfilCloud();
     await sincronizarAgora({silencioso:true});
-    fechar(); irAba("inicio");
+    fechar(); await irAba("inicio");
+    await mostrarConferenciaSePendente();
   }catch(e){
     cloudMsg(traduzirErroAuth(e.message||"Erro ao entrar."),true);
   }finally{_authOcupado=false;travarBotoesConta(false);}
@@ -288,7 +290,8 @@ async function criarContaCloud(){
     await prepararContaLocal();
     await sincronizarPerfilCloud();
     await sincronizarAgora({silencioso:true});
-    fechar(); irAba("inicio");
+    fechar(); await irAba("inicio");
+    await mostrarConferenciaSePendente();
   }catch(e){cloudMsg(traduzirErroAuth(e.message||"Erro ao criar conta."),true);}
   finally{_authOcupado=false;travarBotoesConta(false);}
 }
@@ -630,17 +633,53 @@ function iniciarSyncEmSegundoPlano(){
     }
   },AUTO_SYNC_INTERVAL_MS);
 }
+/* ---------- Conferência aparelho × nuvem (V182) ----------
+   Conta os registros (sem os excluídos) da fazenda ativa, por tipo, no aparelho e no manifesto da nuvem.
+   Abre sozinha depois da primeira sincronização com a nuvem nova (meta.conferencia_pendente). */
+const ROTULOS_CONFERENCIA={propriedades:"Propriedades",marcas:"Marcas",lotes:"Lotes",animais:"Animais",eventos:"Eventos do histórico",
+  medicamentos:"Medicamentos (antigos)",pastos:"Pastos",avisos:"Avisos",lancamentos:"Lançamentos",grupos:"Grupos",
+  grupo_animais:"Animais em grupos",insumos:"Itens do estoque",insumo_mov:"Movimentos do estoque"};
+async function conferenciaNuvem(){
+  const meta=await garantirSyncMeta(),org=meta.active_org_id,linhas=[];
+  for(const store of SYNC_STORES){
+    const aparelho=(await getAllRaw(store)).filter(o=>o.organization_id===org&&!o.deleted_at).length;
+    const man=(await fbFetch("/manifesto/"+store))||{};
+    const nuvem=Object.values(man).filter(m=>!m.d).length;
+    linhas.push({store,rotulo:ROTULOS_CONFERENCIA[store]||store,aparelho,nuvem});
+  }
+  return linhas;
+}
+async function mostrarConferencia(linhas){
+  if(!navigator.onLine)return alert("Sem internet. A conferência precisa consultar a nuvem.");
+  if(!linhas)try{linhas=await conferenciaNuvem();}catch(e){return alert("Não foi possível conferir: "+traduzirErroAuth(e.message));}
+  const usadas=linhas.filter(l=>l.aparelho||l.nuvem),dif=usadas.filter(l=>l.aparelho!==l.nuvem);
+  abrir(`<h2>Conferência dos dados</h2>
+    <div class="meta">Quantos registros há neste aparelho e quantos estão guardados na nuvem.</div>
+    <table class="conf-tabela"><tr><th>Tipo</th><th>Aparelho</th><th>Nuvem</th></tr>
+      ${usadas.map(l=>`<tr class="${l.aparelho===l.nuvem?"":"conf-dif"}"><td>${esc(l.rotulo)}</td><td>${l.aparelho}</td><td>${l.nuvem}</td></tr>`).join("")
+        ||`<tr><td colspan="3" class="meta">Nenhum registro ainda.</td></tr>`}
+    </table>
+    ${dif.length?`<div class="card conf-aviso"><b>Há diferenças.</b><div class="meta" style="margin-top:4px">Toque em Sincronizar agora e confira de novo. Se o número da nuvem for maior, há registros de outro aparelho que ainda vão chegar; se for menor, há envios pendentes.</div></div>`
+      :`<div class="card conf-ok"><b>Tudo confere ✓</b><div class="meta" style="margin-top:4px">Os dados deste aparelho estão guardados na nuvem.</div></div>`}
+    <button class="btn" onclick="fechar()">Fechar</button>`);
+}
+async function mostrarConferenciaSePendente(){
+  const meta=await garantirSyncMeta();
+  if(!meta.conferencia_pendente||!navigator.onLine)return;
+  meta.conferencia_pendente=false;await putRaw("sync_meta",meta);
+  let linhas;try{linhas=await conferenciaNuvem();}catch(e){return;}
+  if(linhas.some(l=>l.aparelho||l.nuvem))await mostrarConferencia(linhas); // conta nova e aparelho vazio: nada a conferir
+}
+
+/* Cópia de segurança na nuvem (V182): /contas/{uid}/backups/{aparelho} = {p: cópia em texto JSON, app_version, updated_at}.
+   Uma por aparelho; "Recuperar" usa a mais recente de qualquer aparelho da conta. */
 async function salvarBackupCloud(){
   if(!navigator.onLine)return alert("Sem internet. O backup local continua disponível.");
   try{
     const u=await authUser(); if(!u)return formLoginCloud();
-    const org=await cloudOrgId(),device=await cloudDeviceId(),payload=await dadosBackup();
-    const body={user_id:u.id,organization_id:org,device_id:device,payload,app_version:CLOUD_APP_VERSION,updated_at:new Date().toISOString()};
-    await sbFetch("/rest/v1/cloud_backups?on_conflict=user_id,device_id",{
-      method:"POST",
-      headers:{"Prefer":"resolution=merge-duplicates,return=representation"},
-      body:JSON.stringify(body)
-    });
+    const device=await cloudDeviceId(),payload=await dadosBackup();
+    await fbFetch("/backups/"+encodeURIComponent(chaveFirebase(device)),{method:"PUT",
+      body:{p:JSON.stringify(payload),app_version:CLOUD_APP_VERSION,updated_at:agoraISO()}});
     await marcarBackup(); _lembreteOculto=true;
     alert("Backup salvo na nuvem com sucesso.");
     telaPerfil();
@@ -649,8 +688,10 @@ async function salvarBackupCloud(){
 async function buscarBackupCloud(mostrarErro=true){
   try{
     const u=await authUser(); if(!u)throw new Error("Entre na sua conta primeiro.");
-    const rows=await sbFetch("/rest/v1/cloud_backups?select=id,payload,created_at,updated_at,device_id,app_version&user_id=eq."+encodeURIComponent(u.id)+"&order=updated_at.desc&limit=1");
-    return rows&&rows.length?rows[0]:null;
+    const todos=(await fbFetch("/backups"))||{};
+    const [chave,b]=Object.entries(todos).sort((x,y)=>String(y[1].updated_at).localeCompare(String(x[1].updated_at)))[0]||[];
+    if(!b)return null;
+    return {payload:JSON.parse(b.p||"null"),updated_at:b.updated_at,device_id:idDaChave(chave),app_version:b.app_version};
   }catch(e){if(mostrarErro)alert("Não foi possível consultar a nuvem: "+e.message);return null;}
 }
 async function restaurarBackupCloud(){
@@ -666,10 +707,10 @@ async function restaurarBackupCloud(){
   }catch(e){alert("Não foi possível restaurar: "+e.message);}
 }
 
+// Perfil na nuvem (V182): /contas/{uid}/perfil = {full_name, role_title, location, phone, avatar_data, updated_at}
 async function buscarPerfilCloud(){
   const u=await authUser(); if(!u)return null;
-  const rows=await sbFetch("/rest/v1/profiles?select=user_id,full_name,role_title,location,phone,avatar_data,updated_at&user_id=eq."+encodeURIComponent(u.id)+"&limit=1");
-  return rows&&rows.length?rows[0]:null;
+  return await fbFetch("/perfil");
 }
 function perfilCloudParaLocal(cp,user){
   return {
@@ -786,19 +827,14 @@ async function salvarPerfil(){
 
   if(navigator.onLine){
     try{
-      await sbFetch("/rest/v1/profiles?on_conflict=user_id",{
-        method:"POST",
-        headers:{"Prefer":"resolution=merge-duplicates,return=representation"},
-        body:JSON.stringify({
-          user_id:user.id,
-          full_name:p.nome,
-          role_title:p.funcao||null,
-          location:p.localizacao||null,
-          phone:p.telefone||null,
-          avatar_data:p.foto||null,
-          updated_at:new Date().toISOString()
-        })
-      });
+      await fbFetch("/perfil",{method:"PUT",body:{
+        full_name:p.nome,
+        role_title:p.funcao||null,
+        location:p.localizacao||null,
+        phone:p.telefone||null,
+        avatar_data:p.foto||null,
+        updated_at:agoraISO()
+      }});
     }catch(e){
       alert("Perfil salvo neste aparelho, mas não foi possível atualizar a nuvem agora: "+e.message);
       fechar();telaPerfil();return;

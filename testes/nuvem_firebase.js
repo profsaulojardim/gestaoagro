@@ -116,6 +116,40 @@ caso('sem rede: mensagem amigável e pendentes continuam pendentes',async(b,fb)=
   if(st==='synced')throw new Error('ficou marcado como enviado');
 });
 
+// ---------- Task 5: cópia na nuvem, perfil e conferência ----------
+caso('cópia na nuvem salva e restaura',async(b,fb)=>{
+  const p=await abrirAparelho(b,fb,fb.contaTeste());await sincronizar(p);
+  await p.evaluate(async()=>{await put('animais',{id:'c1',codigo:7,nome:'Guardada',sexo:'F',status:'Ativo'});await salvarBackupCloud();});
+  const bk=fb.ler('/contas/u1/backups')||{};
+  if(Object.keys(bk).length!==1||!JSON.parse(Object.values(bk)[0].p))throw new Error('backup não gravado');
+  const r=await p.evaluate(async()=>{await del('animais','c1');await restaurarBackupCloud();const a=await get('animais','c1');return a&&a.nome;});
+  if(r!=='Guardada')throw new Error('restaurou: '+r);
+});
+caso('perfil salvo volta',async(b,fb)=>{
+  const s=fb.contaTeste(),p=await abrirAparelho(b,fb,s);
+  await p.evaluate(()=>formPerfil());await p.waitForTimeout(200);
+  await p.fill('#pf_nome','Saulo Jardim');await p.fill('#pf_funcao','Proprietário');await p.fill('#pf_local','Campos');await p.fill('#pf_tel','22 9999');
+  await p.evaluate(()=>salvarPerfil());await p.waitForTimeout(300);
+  if(fb.ler('/contas/u1/perfil/full_name')!=='Saulo Jardim'||fb.ler('/contas/u1/perfil/role_title')!=='Proprietário')throw new Error('não foi para a nuvem');
+  const p2=await abrirAparelho(b,fb,s);
+  const r=await p2.evaluate(async()=>{await sincronizarPerfilCloud();const x=await get('perfil','perfil');return x&&[x.nome,x.funcao,x.localizacao,x.telefone].join('|');});
+  if(r!=='Saulo Jardim|Proprietário|Campos|22 9999')throw new Error('voltou: '+r);
+});
+caso('conferência bate após primeira entrada',async(b,fb)=>{
+  fb.contaTeste('u1','t@t.com','senha1234');
+  const p=await abrirAparelho(b,fb,null);
+  await p.evaluate(async()=>{for(const k of [1,2,3])await putRaw('animais',{id:'a'+k,codigo:k,nome:'V'+k,sexo:'F',status:'Ativo',organization_id:'org-x',sync_status:'synced',updated_at:'2026-11-01T10:00:00.000Z'});
+    await putRaw('lancamentos',{id:'l1',tipo:'despesa',valor:5,organization_id:'org-x',sync_status:'synced',updated_at:'2026-11-01T10:00:00.000Z'});
+    const m=await garantirSyncMeta();m.active_org_id='org-x';await putRaw('sync_meta',m);formEntrarCloud();});
+  await p.fill('#cl_email','t@t.com');await p.fill('#cl_senha','senha1234');
+  await p.evaluate(()=>entrarCloud());await p.waitForTimeout(1500);
+  const txt=await p.evaluate(()=>document.getElementById('ov').classList.contains('on')?document.getElementById('md').innerText:'(sem janela)');
+  if(!/Conferência/.test(txt)||!/Tudo confere/.test(txt))throw new Error('janela: '+txt.slice(0,200));
+  const linhas=await p.evaluate(async()=>(await conferenciaNuvem()).filter(l=>l.aparelho||l.nuvem).map(l=>l.store+':'+l.aparelho+'/'+l.nuvem).join(','));
+  if(linhas!=='animais:3/3,lancamentos:1/1')throw new Error('linhas: '+linhas);
+  if(await p.evaluate(async()=>(await garantirSyncMeta()).conferencia_pendente))throw new Error('marca de conferência não zerou');
+});
+
 (async()=>{
   const b=await chromium.launch({args:['--no-proxy-server']});
   const so=process.argv[2],falhas=[];
