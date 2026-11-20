@@ -312,11 +312,17 @@ async function sairCloud(){
   document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("ativo",x.dataset.aba==="inicio"));
   telaBloqueada();
 }
+/* Fazenda da conta (V182): /contas/{uid}/fazenda guarda o identificador que os registros do aparelho já usam
+   em organization_id (o da época do Supabase), para nenhum dado local precisar mudar. Na primeira vez, grava. */
 async function cloudOrgId(){
   const u=await authUser(); if(!u)throw new Error("Entre na sua conta primeiro.");
-  const rows=await sbFetch("/rest/v1/organization_members?select=organization_id&user_id=eq."+encodeURIComponent(u.id)+"&limit=1");
-  if(!rows||!rows.length)throw new Error("Sua conta ainda não possui uma organização. Execute o SQL de configuração do Supabase no projeto.");
-  return rows[0].organization_id;
+  let org=await fbFetch("/fazenda");
+  if(!org){
+    const meta=await garantirSyncMeta();
+    org=meta.active_org_id||meta.legacy_claimed_org_id||u.id;
+    await fbFetch("/fazenda",{method:"PUT",body:org});
+  }
+  return org;
 }
 async function cloudDeviceId(){
   const m=await garantirSyncMeta(); return m.device_id;
@@ -326,33 +332,33 @@ async function prepararContaLocal(){
   const user=await authUser(); if(!user)return null;
   const meta=await garantirSyncMeta();
 
-  // Offline: mantém a organização previamente associada ao aparelho.
+  // Offline: mantém a fazenda previamente associada ao aparelho.
   if(!navigator.onLine){
     if(meta.active_user_id===user.id&&meta.active_org_id)return meta.active_org_id;
     return null;
   }
 
+  const orgAnterior=meta.active_org_id||meta.legacy_claimed_org_id||null;
   const org=await cloudOrgId();
-  meta.active_user_id=user.id;
-  meta.active_org_id=org;
 
-  // Na primeira adoção da V59, os dados antigos sem organização passam a
-  // pertencer à primeira organização autenticada neste aparelho.
-  if(!meta.legacy_claimed_org_id){
+  // V182: primeira entrada deste aparelho nesta conta do Firebase — tudo o que está no aparelho (da fazenda
+  // anterior ou sem fazenda) passa para a fazenda da conta e fica pendente, para subir para a nuvem nova.
+  // Registros de outra fazenda que estejam no aparelho não são tocados.
+  if(meta.firebase_uid!==user.id){
     for(const s of SYNC_STORES){
-      const arr=await getAllRaw(s);
-      for(const o of arr){
-        if(!o.organization_id){
-          o.organization_id=org;
-          if(o.sync_status==="synced")o.sync_status="pending_update";
-          else if(!o.sync_status)o.sync_status="pending_create";
-          await putRaw(s,o);
-        }
+      for(const o of await getAllRaw(s)){
+        if(o.organization_id&&o.organization_id!==org&&o.organization_id!==orgAnterior)continue;
+        o.organization_id=org;
+        o.sync_status=o.sync_status&&o.sync_status!=="pending_create"?"pending_update":"pending_create";
+        await putRaw(s,o);
       }
     }
+    meta.firebase_uid=user.id;
     meta.legacy_claimed_org_id=org;
+    meta.conferencia_pendente=true;
   }
-
+  meta.active_user_id=user.id;
+  meta.active_org_id=org;
   await putRaw("sync_meta",meta);
   return org;
 }
@@ -389,73 +395,54 @@ function cloudNewerStrict(row,local){
   return Number(row.sync_version||0)>Number(local.sync_version||0);
 }
 
-// V154: devolve (id -> linha completa da nuvem) dos registros em que a nuvem está estritamente mais nova
-async function versoesMaisNovasNaNuvem(org,store,lote){
-  const out=new Map();
-  const inList="("+lote.map(o=>'"'+String(o.id)+'"').join(",")+")";
-  const base="/rest/v1/sync_records?organization_id=eq."+encodeURIComponent(org)+"&store_name=eq."+encodeURIComponent(store)+"&record_id=in."+encodeURIComponent(inList);
-  const manifesto=await sbFetch("/rest/v1/sync_records?select=record_id,record_updated_at,deleted_at,sync_version&"+base.split("?")[1])||[];
-  const ids=manifesto.filter(r=>{const l=lote.find(o=>String(o.id)===String(r.record_id));return l&&cloudNewerStrict(r,l);}).map(r=>String(r.record_id));
-  if(!ids.length)return out;
-  const inIds="("+ids.map(x=>'"'+x+'"').join(",")+")";
-  const rows=await sbFetch("/rest/v1/sync_records?select=organization_id,store_name,record_id,payload,record_updated_at,deleted_at,sync_version&organization_id=eq."+encodeURIComponent(org)+"&store_name=eq."+encodeURIComponent(store)+"&record_id=in."+encodeURIComponent(inIds))||[];
-  for(const r of rows)out.set(String(r.record_id),r);
-  return out;
+/* ---------- Nuvem no Firebase Realtime Database (V182) ----------
+   /contas/{uid}/registros/{store}/{chave} = {p: registro em texto JSON, u: updated_at, v: sync_version, d: deleted_at, dev}
+   /contas/{uid}/manifesto/{store}/{chave} = {u, v, d}  (leve, sem fotos: diz o que mudou)
+   O registro vai como texto JSON porque o Firebase apaga listas vazias e campos null.
+   Chaves não podem ter . # $ [ ] /  — chaveFirebase() troca esses caracteres (e o %) por %XX, ida e volta exata. */
+const chaveFirebase=id=>String(id).replace(/[.#$\[\]\/%]/g,c=>"%"+c.charCodeAt(0).toString(16).toUpperCase().padStart(2,"0"));
+const idDaChave=k=>String(k).replace(/%([0-9A-F]{2})/g,(m,h)=>String.fromCharCode(parseInt(h,16)));
+const caminhoRegistro=(store,chave)=>`/registros/${store}/${encodeURIComponent(chave)}`;
+// Registro da nuvem no formato de linha que cloudRecordToLocal() entende.
+function linhaDaNuvem(store,chave,reg,org){
+  let payload={};try{payload=JSON.parse(reg.p||"{}");}catch(e){}
+  return {organization_id:org,store_name:store,record_id:idDaChave(chave),payload,
+    record_updated_at:reg.u||null,deleted_at:reg.d||null,sync_version:Number(reg.v||1)};
 }
+const metaDoManifesto=m=>({record_updated_at:m&&m.u,sync_version:m&&m.v});
+
 async function pushPendentes(org,user,device){
   let enviados=0,recebidos=0;
   for(const s of SYNC_STORES){
-    const locais=(await getAllRaw(s)).filter(o=>
-      o.organization_id===org && o.sync_status!=="synced"
-    );
+    const locais=(await getAllRaw(s)).filter(o=>o.organization_id===org&&o.sync_status!=="synced");
     if(!locais.length)continue;
-
-    // Lotes pequenos evitam requisições muito grandes quando houver fotos/base64.
+    const manifesto=(await fbFetch("/manifesto/"+s))||{};
+    // Lotes de 25: cada lote vai numa única gravação (registros + manifesto juntos).
     for(let i=0;i<locais.length;i+=25){
       let lote=locais.slice(i,i+25);
-      // V154: antes de enviar, confere se a nuvem já tem uma versão MAIS NOVA do mesmo registro
-      // (feita em outro aparelho). Nesse caso a versão da nuvem vale: é baixada e a local antiga
-      // não é enviada. Sem isso, um aparelho que ficou offline com uma edição antiga sobrescrevia
-      // a edição mais nova e os aparelhos ficavam com dados diferentes.
-      const conflitos=await versoesMaisNovasNaNuvem(org,s,lote);
-      if(conflitos.size){
-        for(const [id,row] of conflitos){await putRaw(s,cloudRecordToLocal(row));recebidos++;}
-        lote=lote.filter(o=>!conflitos.has(String(o.id)));
-        if(!lote.length)continue;
+      // V154: se a nuvem já tem uma versão MAIS NOVA (feita em outro aparelho), ela vale: é baixada e a local
+      // antiga não é enviada — um aparelho que ficou offline com edição antiga não sobrescreve a mais nova.
+      const conflitos=lote.filter(o=>{const m=manifesto[chaveFirebase(o.id)];return m&&cloudNewerStrict(metaDoManifesto(m),o);});
+      for(const o of conflitos){
+        const k=chaveFirebase(o.id),reg=await fbFetch(caminhoRegistro(s,k));
+        if(reg){await putRaw(s,cloudRecordToLocal(linhaDaNuvem(s,k,reg,org)));recebidos++;}
       }
-      const body=lote.map(o=>({
-        organization_id:org,
-        store_name:s,
-        record_id:String(o.id),
-        payload:payloadSync(o),
-        record_updated_at:o.updated_at||agoraISO(),
-        deleted_at:o.deleted_at||null,
-        sync_version:Number(o.sync_version||1),
-        updated_by:user.id,
-        source_device_id:device
-      }));
-      const resp=await sbFetch("/rest/v1/sync_records?on_conflict=organization_id,store_name,record_id",{
-        method:"POST",
-        headers:{"Prefer":"resolution=merge-duplicates,return=representation"},
-        body:JSON.stringify(body)
-      })||[];
-
-      const mapa=new Map(resp.map(r=>[String(r.record_id),r]));
-      for(const local of lote){
-        const remoto=mapa.get(String(local.id));
-        if(!remoto)continue;
-        const atual=await getRaw(s,local.id);
+      const baixados=new Set(conflitos.map(o=>String(o.id)));
+      lote=lote.filter(o=>!baixados.has(String(o.id)));
+      if(!lote.length)continue;
+      const mudancas={};
+      for(const o of lote){
+        const k=chaveFirebase(o.id),u=o.updated_at||agoraISO(),v=Number(o.sync_version||1),d=o.deleted_at||null;
+        mudancas[`registros/${s}/${k}`]={p:JSON.stringify(payloadSync(o)),u,v,d,dev:device};
+        mudancas[`manifesto/${s}/${k}`]={u,v,d};
+      }
+      await fbFetch("",{method:"PATCH",body:mudancas});
+      for(const o of lote){
+        const atual=await getRaw(s,o.id);
         if(!atual)continue;
-
-        if(cloudMaisNovo(remoto,atual) &&
-           (Date.parse(remoto.record_updated_at||0)>Date.parse(atual.updated_at||0) ||
-            Number(remoto.sync_version||0)>Number(atual.sync_version||0))){
-          await putRaw(s,cloudRecordToLocal(remoto));
-          recebidos++;
-        }else{
-          atual.organization_id=org;
-          atual.sync_status="synced";
-          await putRaw(s,atual);
+        // Alterado de novo enquanto enviava: continua pendente para a próxima vez.
+        if((atual.updated_at||"")===(o.updated_at||"")&&Number(atual.sync_version||1)===Number(o.sync_version||1)){
+          atual.sync_status="synced";await putRaw(s,atual);
         }
         enviados++;
       }
@@ -465,88 +452,38 @@ async function pushPendentes(org,user,device){
 }
 
 async function pullCloud(org){
-  /*
-    V75: pull por reconciliação de conteúdo, independente de server_updated_at.
-
-    Motivo: em tabelas padrão do Supabase, server_updated_at é definido no INSERT
-    e NÃO muda no UPDATE (sem trigger). O pull incremental antigo (server_updated_at
-    >= cursor) portanto NÃO enxergava EDIÇÕES feitas em outro aparelho — só
-    inserções. Mover um animal de grupo/lote é uma edição, então não propagava.
-
-    Agora, para cada store: baixamos um "manifesto" leve (só record_id +
-    record_updated_at + sync_version + deleted_at, SEM payload/fotos), comparamos
-    com o local pelo record_updated_at (que sempre avança a cada edição no app) e
-    só baixamos o payload completo dos registros que realmente mudaram. Cobre
-    inserções, edições e exclusões em TODAS as tabelas, sem depender do relógio
-    do servidor e sem rebaixar fotos inalteradas.
-  */
+  /* Reconciliação por conteúdo (como desde a V75): para cada store, baixa o manifesto leve, compara com o local
+     pelo updated_at/sync_version e só baixa o registro completo do que realmente mudou. Cobre inserções,
+     edições e exclusões. Muitos registros (> 40, ex.: aparelho novo) → baixa a store inteira de uma vez. */
   let aplicados=0,consultados=0;
-  const PAGE=500;
   for(const store of SYNC_STORES){
-    // 1) Manifesto leve (paginado), só metadados.
-    const remotos=[]; let offset=0;
-    while(true){
-      const path=
-        "/rest/v1/sync_records?select=record_id,record_updated_at,deleted_at,sync_version"+
-        "&organization_id=eq."+encodeURIComponent(org)+
-        "&store_name=eq."+encodeURIComponent(store)+
-        "&order=record_id.asc&limit="+PAGE+"&offset="+offset;
-      const rows=await sbFetch(path)||[];
-      remotos.push(...rows);
-      offset+=rows.length;
-      if(rows.length<PAGE)break;
-    }
-    consultados+=remotos.length;
-
-    // 2) Decide quais precisam do payload completo (novos ou estritamente mais novos).
+    const manifesto=(await fbFetch("/manifesto/"+store))||{};
+    const chaves=Object.keys(manifesto);
+    consultados+=chaves.length;
     const precisa=[];
-    for(const r of remotos){
-      const local=await getRaw(store,r.record_id);
-      if(!local || cloudNewerStrict(r,local) ||
-         (local.organization_id&&local.organization_id!==org)){
-        precisa.push(String(r.record_id));
-      }
+    for(const k of chaves){
+      const local=await getRaw(store,idDaChave(k));
+      if(!local||cloudNewerStrict(metaDoManifesto(manifesto[k]),local)||(local.organization_id&&local.organization_id!==org))precisa.push(k);
     }
     if(!precisa.length)continue;
-
-    // 3) Baixa o payload completo só dos que mudaram, em lotes.
-    for(let i=0;i<precisa.length;i+=50){
-      const ids=precisa.slice(i,i+50);
-      const inList="("+ids.map(x=>'"'+x+'"').join(",")+")";
-      const path=
-        "/rest/v1/sync_records?select=organization_id,store_name,record_id,payload,record_updated_at,deleted_at,sync_version"+
-        "&organization_id=eq."+encodeURIComponent(org)+
-        "&store_name=eq."+encodeURIComponent(store)+
-        "&record_id=in."+encodeURIComponent(inList);
-      const rows=await sbFetch(path)||[];
-      for(const row of rows){
-        const local=await getRaw(store,row.record_id);
-        const localDeOutraOrg=!!(local&&local.organization_id&&local.organization_id!==org);
-        // Preserva alteração local pendente que seja mais nova que a nuvem.
-        if(!local || localDeOutraOrg || local.sync_status==="synced" || cloudNewerStrict(row,local)){
-          await putRaw(store,cloudRecordToLocal(row));
-          aplicados++;
-        }
+    let regs={};
+    if(precisa.length>40)regs=(await fbFetch("/registros/"+store))||{};
+    else for(const k of precisa)regs[k]=await fbFetch(caminhoRegistro(store,k));
+    for(const k of precisa){
+      if(!regs[k])continue;
+      const row=linhaDaNuvem(store,k,regs[k],org),local=await getRaw(store,row.record_id);
+      const localDeOutraOrg=!!(local&&local.organization_id&&local.organization_id!==org);
+      // Preserva alteração local pendente que seja mais nova que a nuvem.
+      if(!local||localDeOutraOrg||local.sync_status==="synced"||cloudNewerStrict(row,local)){
+        await putRaw(store,cloudRecordToLocal(row));
+        aplicados++;
       }
     }
   }
-  // Mantém carimbo de tempo apenas para exibição; o pull não depende dele.
   const meta=await garantirSyncMeta();
   meta.last_server_sync_at=agoraISO();
   await putRaw("sync_meta",meta);
   return {aplicados,consultados,cursor:meta.last_server_sync_at};
-}
-
-async function marcarTudoSincronizado(org){
-  // Depois do pull, itens iguais ao servidor já foram conciliados.
-  // Mantém pendentes somente alterações que ocorreram durante a sincronização.
-  for(const s of SYNC_STORES){
-    const arr=await getAllRaw(s);
-    for(const o of arr){
-      if(o.organization_id!==org || o.sync_status==="synced")continue;
-      // não força status aqui: um put simultâneo precisa continuar pendente
-    }
-  }
 }
 
 async function sincronizarAgora({silencioso=false}={}){
