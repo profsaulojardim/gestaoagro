@@ -194,6 +194,10 @@ function formEntrarCloud(msg=""){
       <b style="color:var(--verde-esc)">✅ Cadastro realizado com sucesso</b>
       <div class="meta" style="margin-top:4px">${esc(msg)}</div>
     </div>`:`<div class="meta">Use o e-mail e a senha da sua conta.</div>`}
+    <div class="card" style="background:#fff8e6;border-left:4px solid #c9a227;box-shadow:none;margin:12px 0 4px">
+      <b>Nova nuvem (V182)</b>
+      <div class="meta" style="margin-top:4px">No primeiro acesso depois da atualização, toque em <b>Criar conta</b> com o mesmo e-mail e uma senha nova. Seus dados do aparelho são enviados para a nuvem nova.</div>
+    </div>
 
     <label>E-mail</label>
     <input id="cl_email" type="email" autocomplete="email" placeholder="seu@email.com">
@@ -204,7 +208,8 @@ function formEntrarCloud(msg=""){
     <div id="cl_msg" class="meta" style="margin-top:10px"></div>
 
     <button class="btn" style="margin-top:18px" onclick="entrarCloud()">Entrar</button>
-    <button class="btn btn-sec" onclick="formCriarContaCloud()">Ainda não tenho conta</button>
+    <button class="btn btn-sec" onclick="formCriarContaCloud()">Criar conta</button>
+    <button class="btn-fant" onclick="esqueciSenhaCloud()">Esqueci a senha</button>
     <button class="btn-fant" onclick="formLoginCloud()">‹ Voltar</button>`);
 }
 
@@ -230,17 +235,17 @@ function formCriarContaCloud(){
     <button class="btn btn-sec" onclick="formEntrarCloud()">Já tenho conta</button>
     <button class="btn-fant" onclick="formLoginCloud()">‹ Voltar</button>`);
 }
-/* V154: mensagens do Supabase em português e proteção contra toque duplo nos botões de conta */
+/* Mensagens do Firebase Auth em português (V182) e proteção contra toque duplo nos botões de conta (V154) */
 let _authOcupado=false;
 function traduzirErroAuth(msg){
   const m=String(msg||"");
-  if(/duplicate key|already registered|already exists|users_email_partial_key|User already/i.test(m))return "Este e-mail já tem cadastro. Use Entrar (ou recupere a senha).";
-  if(/Invalid login credentials/i.test(m))return "E-mail ou senha incorretos.";
-  if(/Email not confirmed|not confirmed|verified/i.test(m))return "Confirme sua conta pelo link enviado ao seu e-mail antes de entrar.";
-  if(/rate limit|too many|security purposes/i.test(m))return "Muitas tentativas seguidas. Aguarde alguns minutos e tente de novo.";
-  if(/Password should be|weak password/i.test(m))return "Senha fraca: use pelo menos 8 caracteres, misturando letras e números.";
-  if(/invalid.*email|Unable to validate email/i.test(m))return "E-mail inválido. Confira o endereço digitado.";
-  if(/Failed to fetch|NetworkError|Load failed/i.test(m))return "Sem conexão com o servidor. Verifique a internet e tente de novo.";
+  if(/EMAIL_EXISTS/.test(m))return "Este e-mail já tem conta nesta nuvem. Use Entrar (ou Esqueci a senha).";
+  if(/INVALID_LOGIN_CREDENTIALS|INVALID_PASSWORD|EMAIL_NOT_FOUND/.test(m))return "E-mail ou senha incorretos. Primeiro acesso na nuvem nova? Use Criar conta com o mesmo e-mail.";
+  if(/USER_DISABLED/.test(m))return "Esta conta foi desativada.";
+  if(/TOO_MANY_ATTEMPTS/.test(m))return "Muitas tentativas seguidas. Aguarde alguns minutos e tente de novo.";
+  if(/WEAK_PASSWORD/.test(m))return "Senha fraca: use pelo menos 8 caracteres, misturando letras e números.";
+  if(/INVALID_EMAIL|MISSING_EMAIL/.test(m))return "E-mail inválido. Confira o endereço digitado.";
+  if(/Sem conexão|Failed to fetch|NetworkError|Load failed/i.test(m))return MSG_SEM_CONEXAO;
   return m||"Não foi possível concluir. Tente de novo.";
 }
 function travarBotoesConta(on){
@@ -251,17 +256,12 @@ function cloudMsg(t,erro=false){
 }
 async function entrarCloud(){
   if(_authOcupado)return;
-  const email=val("cl_email"),password=val("cl_senha");
+  const email=val("cl_email").trim(),password=val("cl_senha");
   if(!email||!password)return cloudMsg("Informe e-mail e senha.",true);
   cloudMsg("Entrando…");
   _authOcupado=true;travarBotoesConta(true);
   try{
-    const s=await fetch(SUPABASE_URL+"/auth/v1/token?grant_type=password",{
-      method:"POST",
-      headers:{"apikey":SUPABASE_PUBLISHABLE_KEY,"Content-Type":"application/json"},
-      body:JSON.stringify({email,password})
-    }).then(async r=>{const b=await r.json();if(!r.ok)throw new Error(b.error_description||b.msg||b.message||"Não foi possível entrar.");return b;});
-    saveAuthSession(s);
+    saveAuthSession(sessaoDeRespostaAuth(await fbAuth("signInWithPassword",{email,password,returnSecureToken:true})));
     await prepararContaLocal();
     await sincronizarPerfilCloud();
     await sincronizarAgora({silencioso:true});
@@ -270,8 +270,9 @@ async function entrarCloud(){
     cloudMsg(traduzirErroAuth(e.message||"Erro ao entrar."),true);
   }finally{_authOcupado=false;travarBotoesConta(false);}
 }
+// V182: no Firebase a conta já entra na hora (não precisa confirmar e-mail).
 async function criarContaCloud(){
-  const nome=val("cl_nome"),email=val("cl_email"),password=val("cl_senha"),password2=val("cl_senha2");
+  const nome=val("cl_nome").trim(),email=val("cl_email").trim(),password=val("cl_senha"),password2=val("cl_senha2");
   if(!nome)return cloudMsg("Informe seu nome para criar a conta.",true);
   if(!email)return cloudMsg("Informe seu e-mail.",true);
   if(!password)return cloudMsg("Crie uma senha.",true);
@@ -281,29 +282,34 @@ async function criarContaCloud(){
   cloudMsg("Criando conta…");
   _authOcupado=true;travarBotoesConta(true);
   try{
-    const r=await fetch(SUPABASE_URL+"/auth/v1/signup",{
-      method:"POST",
-      headers:{"apikey":SUPABASE_PUBLISHABLE_KEY,"Content-Type":"application/json"},
-      body:JSON.stringify({email,password,data:{app:"Gestão do Rebanho",full_name:nome}})
-    });
-    const b=await r.json();
-    if(!r.ok)throw new Error(b.msg||b.message||b.error_description||"Não foi possível criar a conta.");
-    // O Supabase responde "ok" sem identidades quando o e-mail já existe (não revela a conta)
-    const u=b.user||b;if(u&&Array.isArray(u.identities)&&u.identities.length===0)throw new Error("already registered");
-    // Mesmo que o Supabase devolva sessão imediata, o fluxo da V56
-    // sempre leva o usuário para a tela de login após o cadastro.
-    saveAuthSession(null);
-    formEntrarCloud("Confira seu e-mail e confirme a conta antes de entrar.");
+    saveAuthSession(sessaoDeRespostaAuth(await fbAuth("signUp",{email,password,returnSecureToken:true}),nome));
+    const atual=(await fbFetch("/perfil"))||{};
+    await fbFetch("/perfil",{method:"PUT",body:{...atual,full_name:atual.full_name||nome,updated_at:agoraISO()}});
+    await prepararContaLocal();
+    await sincronizarPerfilCloud();
+    await sincronizarAgora({silencioso:true});
+    fechar(); irAba("inicio");
   }catch(e){cloudMsg(traduzirErroAuth(e.message||"Erro ao criar conta."),true);}
   finally{_authOcupado=false;travarBotoesConta(false);}
+}
+async function esqueciSenhaCloud(){
+  const email=(val("cl_email")||"").trim();
+  if(!email)return cloudMsg("Digite seu e-mail acima e toque de novo em Esqueci a senha.",true);
+  if(_authOcupado)return;
+  _authOcupado=true;travarBotoesConta(true);
+  try{
+    await fbAuth("sendOobCode",{requestType:"PASSWORD_RESET",email});
+    cloudMsg(`Enviamos um link para ${email} para você criar uma senha nova. Veja também a caixa de spam.`);
+  }catch(e){
+    cloudMsg(/EMAIL_NOT_FOUND/.test(e.message)?"Esse e-mail ainda não tem conta na nuvem nova. Use Criar conta.":traduzirErroAuth(e.message),true);
+  }finally{_authOcupado=false;travarBotoesConta(false);}
 }
 function confirmarLogout(){
   if(!confirm("Deseja realmente sair da sua conta?"))return;
   sairCloud();
 }
 async function sairCloud(){
-  try{await sbFetch("/auth/v1/logout",{method:"POST"});}catch(e){}
-  saveAuthSession(null);
+  saveAuthSession(null); // V182: no Firebase basta esquecer a sessão neste aparelho
   const m=await garantirSyncMeta();
   m.active_user_id=null;
   m.active_org_id=null;

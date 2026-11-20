@@ -69,6 +69,53 @@ caso('payload com lista vazia',async(b,fb)=>{
   if(l!=='[[],{"a":null,"b":[]}]')throw new Error('voltou: '+l);
 });
 
+// ---------- Task 4: telas de conta e mensagens ----------
+const msgConta=p=>p.evaluate(()=>(document.getElementById('cl_msg')||{}).textContent||'');
+caso('criar conta entra direto',async(b,fb)=>{
+  const p=await abrirAparelho(b,fb,null);
+  await p.evaluate(()=>formCriarContaCloud());
+  await p.fill('#cl_nome','Saulo');await p.fill('#cl_email','novo@t.com');await p.fill('#cl_senha','senha1234');await p.fill('#cl_senha2','senha1234');
+  await p.evaluate(()=>criarContaCloud());await p.waitForTimeout(800);
+  const r=await p.evaluate(()=>({s:authSession(),aberto:document.getElementById('ov').classList.contains('on')}));
+  if(!r.s||r.s.user.email!=='novo@t.com')throw new Error('sem sessão');
+  if(r.aberto)throw new Error('janela continuou aberta: '+await msgConta(p));
+  if(fb.ler('/contas/'+r.s.user.id+'/perfil/full_name')!=='Saulo')throw new Error('nome não foi para a nuvem');
+});
+caso('email já existe',async(b,fb)=>{
+  fb.contaTeste('u1','t@t.com');
+  const p=await abrirAparelho(b,fb,null);
+  await p.evaluate(()=>formCriarContaCloud());
+  await p.fill('#cl_nome','S');await p.fill('#cl_email','t@t.com');await p.fill('#cl_senha','senha1234');await p.fill('#cl_senha2','senha1234');
+  await p.evaluate(()=>criarContaCloud());
+  if(!/já tem conta/.test(await msgConta(p)))throw new Error('msg: '+await msgConta(p));
+});
+caso('senha errada mostra dica de primeiro acesso',async(b,fb)=>{
+  fb.contaTeste('u1','t@t.com','certa123');
+  const p=await abrirAparelho(b,fb,null);
+  await p.evaluate(()=>formEntrarCloud());
+  if(!/Criar conta/.test(await p.evaluate(()=>document.getElementById('md').innerText)))throw new Error('sem aviso de nova nuvem');
+  await p.fill('#cl_email','t@t.com');await p.fill('#cl_senha','errada99');
+  await p.evaluate(()=>entrarCloud());
+  const m=await msgConta(p);if(!/incorretos/.test(m)||!/Criar conta/.test(m))throw new Error('msg: '+m);
+});
+caso('esqueci a senha chama sendOobCode',async(b,fb)=>{
+  fb.contaTeste('u1','t@t.com');
+  const p=await abrirAparelho(b,fb,null);
+  await p.evaluate(()=>formEntrarCloud());await p.fill('#cl_email','t@t.com');
+  await p.evaluate(()=>esqueciSenhaCloud());
+  if(!fb.chamadas.some(c=>c.metodo==='sendOobCode'))throw new Error('não chamou');
+  if(!/Enviamos/.test(await msgConta(p)))throw new Error('msg: '+await msgConta(p));
+});
+caso('sem rede: mensagem amigável e pendentes continuam pendentes',async(b,fb)=>{
+  const p=await abrirAparelho(b,fb,fb.contaTeste());await sincronizar(p);
+  await p.evaluate(async()=>{await put('animais',{id:'z1',codigo:5,nome:'Z',sexo:'F',status:'Ativo'});});
+  fb.falharRede(true);
+  const r=await sincronizar(p);
+  const st=await p.evaluate(async()=>(await getRaw('animais','z1')).sync_status);
+  if(!/Sem conexão com o servidor/.test(r))throw new Error('erro: '+r);
+  if(st==='synced')throw new Error('ficou marcado como enviado');
+});
+
 (async()=>{
   const b=await chromium.launch({args:['--no-proxy-server']});
   const so=process.argv[2],falhas=[];
