@@ -7,8 +7,8 @@ Dados: IndexedDB local + nuvem no **Firebase** (projeto `rebanho-2026`, Realtime
 ARQUITETURA.md "Nuvem"). Os dois apps usam o MESMO Firebase; no app de teste o dono entra com OUTRO e-mail.
 Campos novos vão dentro dos registros; nada de store nova.
 
-**Migração em andamento (nov/2026):** V182 (Firebase) está só no app de teste. A produção continua na V181 com o
-Supabase até a Fase 4 do plano `docs/superpowers/plans/2026-11-20-migracao-firebase.md`. Até lá, NÃO publicar na
+**Migração em andamento (nov/2026):** V182+ (Firebase) está só no app de teste. A produção continua com o Supabase
+(V184 na produção = V181 + correção dos dias do pasto, publicada por cima da V181) até a Fase 4 do plano `docs/superpowers/plans/2026-11-20-migracao-firebase.md`. Até lá, NÃO publicar na
 produção sem o dono pedir (e, se for preciso, publicar a correção sobre a V181 com o Supabase de produção
 `homosmdrqtdxtmmmnbpd`, chave `sb_publishable_FcTVOwopuWb8WbzJaqEE5A_GGO1g9Ve`). Depois da Fase 4 este aviso sai.
 
