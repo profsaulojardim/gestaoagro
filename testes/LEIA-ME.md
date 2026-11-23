@@ -14,6 +14,7 @@ NODE_PATH=$(npm root -g) node testes/navegacao_voltar.js
 NODE_PATH=$(npm root -g) node testes/animais_servico.js
 NODE_PATH=$(npm root -g) node testes/venda_selecao_fotos.js
 NODE_PATH=$(npm root -g) node testes/escolha_mae.js
+NODE_PATH=$(npm root -g) node testes/gestao_pasto.js
 ```
 
 `firebase_simulado.js` (V182) é o Firebase simulado em memória usado pelos testes (login, renovação do token,
@@ -40,3 +41,6 @@ lote (volta para o lote), lançamentos/partidas e os outros modos de venda.
 `escolha_mae.js` (V181) confere a escolha da mãe pela foto: só fêmeas ativas com 12 meses ou mais (sem vendidas,
 mortas, machos e bezerras), busca, gravação no nascimento e na edição (mãe já gravada continua aparecendo) e o
 sexo obrigatório no cadastro.
+
+`gestao_pasto.js` (V184) confere que o cartão do pasto mostra os dias da situação ATUAL (lote que entrou hoje =
+"Entrou hoje", não a soma dos períodos antigos) e que o histórico do pasto mostra os totais como "no total".
